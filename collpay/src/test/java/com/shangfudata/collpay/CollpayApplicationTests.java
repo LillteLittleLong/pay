@@ -83,8 +83,8 @@ public class CollpayApplicationTests {
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
 
         //获取公钥
-        String down_pub_key = downSpInfo.get().getDown_pub_key();
-        RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        String my_pub_key = downSpInfo.get().getMy_pub_key();
+        RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(my_pub_key);
 
         //获取私钥
         String down_pri_key = downSpInfo.get().getDown_pri_key();
@@ -95,18 +95,18 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("哈哈哈哈22222");
-        collpayInfo.setTotal_fee("8864");
+        collpayInfo.setBody("午饭晚饭呢");
+        collpayInfo.setTotal_fee("2222");
         collpayInfo.setCard_type("CREDIT");
-        collpayInfo.setCard_name( "fasf");
-        collpayInfo.setCard_no("41844896001134258654");
+        collpayInfo.setCard_name( "嘿嘿嘿");
+        collpayInfo.setCard_no("6217992900013005868");
         collpayInfo.setId_type("ID_CARD");
-        collpayInfo.setId_no("410781199004016952");
-        collpayInfo.setBank_mobile( "12345678912");
+        collpayInfo.setId_no("342101196608282018");
+        collpayInfo.setBank_mobile( "15563637881");
         collpayInfo.setCvv2("123");
         collpayInfo.setCard_valid_date("0318");
         //collpayInfo.set("notify_url", "http://192.168.168.168");
-        collpayInfo.setNonce_str("123456789");
+        collpayInfo.setNonce_str("12345678901234567890123456789011");
 
         //公钥加密
         collpayInfo.setCard_name(RSAUtils.publicKeyEncrypt(collpayInfo.getCard_name(), rsaPublicKey));

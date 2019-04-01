@@ -4,5 +4,5 @@ public interface CollpayService {
 
     String downCollpay(String CollpayInfoToJson)  throws  Exception;
 
-    void collpayToUp(String collpayInfoToJson);
+    void collpayToUp(String collpayInfoToJson)throws Exception;
 }

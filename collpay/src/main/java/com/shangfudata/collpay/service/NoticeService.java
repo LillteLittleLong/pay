@@ -1,6 +1,8 @@
 package com.shangfudata.collpay.service;
 
+import com.shangfudata.collpay.entity.CollpayInfo;
+
 public interface NoticeService {
 
-    String notice(String responseInfo) throws Exception;
+    void notice(CollpayInfo collpayInfo) /*throws Exception*/;
 }

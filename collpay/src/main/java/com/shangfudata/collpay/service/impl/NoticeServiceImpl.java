@@ -1,5 +1,6 @@
 package com.shangfudata.collpay.service.impl;
 
+import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.dao.CollpayInfoRespository;
 import com.shangfudata.collpay.dao.DownSpInfoRespository;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -23,37 +26,56 @@ public class NoticeServiceImpl implements NoticeService {
     DownSpInfoRespository downSpInfoRespository;
 
     @Override
-    public String notice(String out_trade_no) throws Exception{
+    public void notice(CollpayInfo collpayInfo) /*throws Exception*/{
         Gson gson = new Gson();
-        //获得当前订单号的订单信息
-        CollpayInfo collpayInfo = collpayInfoRespository.findByOutTradeNo(out_trade_no);
+
         //拿到订单信息中的下游机构号，再拿密钥
         String down_sp_id = collpayInfo.getDown_sp_id();
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
 
-        //获取公钥
-        String down_pub_key = downSpInfo.get().getDown_pub_key();
-        RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        RSAPublicKey rsaPublicKey = null;
+        RSAPrivateKey rsaPrivateKey = null;
+        try{
+            //获取公钥
+            String down_pub_key = downSpInfo.get().getDown_pub_key();
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+            //获取私钥
+            String my_pri_key = downSpInfo.get().getMy_pri_key();
+            rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+        }catch(Exception e){
 
-        //获取私钥
-        String down_pri_key = downSpInfo.get().getDown_pri_key();
-        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+        }
+
+        Map map = new HashMap();
+
+        if("SUCCESS".equals(collpayInfo.getStatus())){
+            map.put("status",collpayInfo.getStatus());
+            map.put("trade_state",collpayInfo.getTrade_state());
+            map.put("err_code",collpayInfo.getErr_code());
+            map.put("err_msg",collpayInfo.getErr_msg());
+        }else if("FAIL".equals(collpayInfo.getStatus())){
+            map.put("status",collpayInfo.getStatus());
+            map.put("code",collpayInfo.getCode());
+            map.put("message",collpayInfo.getMessage());
+        }
 
         //私钥签名
-        String s = gson.toJson(collpayInfo);
-        collpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+        String s = gson.toJson(map);
+        map.put("sign",RSAUtils.sign(s,rsaPrivateKey));
+        String responseInfoJson = gson.toJson(map);
 
-        //公钥加密
-        collpayInfo.setCard_name(RSAUtils.publicKeyEncrypt(collpayInfo.getCard_name(), rsaPublicKey));
-        collpayInfo.setCard_no(RSAUtils.publicKeyEncrypt(collpayInfo.getCard_no(), rsaPublicKey));
-        collpayInfo.setId_no(RSAUtils.publicKeyEncrypt(collpayInfo.getId_no(), rsaPublicKey));
-        collpayInfo.setBank_mobile(RSAUtils.publicKeyEncrypt(collpayInfo.getBank_mobile(), rsaPublicKey));
-        collpayInfo.setCvv2(RSAUtils.publicKeyEncrypt(collpayInfo.getCvv2(), rsaPublicKey));
-        collpayInfo.setCard_valid_date(RSAUtils.publicKeyEncrypt(collpayInfo.getCard_valid_date(), rsaPublicKey));
+        // 通知计数
+        int count = 0;
+        // 通知结果
+        String body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
 
-        String collpayInfotoJson = gson.toJson(collpayInfo);
-        System.out.println("******通知信息******："+collpayInfotoJson);
+        while(!(body.equals("SUCCESS")) && count != 5){
+            body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+            count++;
+        }
+        String notice_status = "true";
+        collpayInfoRespository.updateNoticeStatus(notice_status,collpayInfo.getOut_trade_no());
 
-        return collpayInfotoJson;
+
     }
 }

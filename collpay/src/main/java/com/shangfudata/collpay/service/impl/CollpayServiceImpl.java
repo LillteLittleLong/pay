@@ -9,7 +9,9 @@ import com.shangfudata.collpay.entity.CollpayInfo;
 import com.shangfudata.collpay.entity.DownSpInfo;
 import com.shangfudata.collpay.jms.CollpaySenderService;
 import com.shangfudata.collpay.service.CollpayService;
+import com.shangfudata.collpay.service.NoticeService;
 import com.shangfudata.collpay.util.AesUtils;
+import com.shangfudata.collpay.util.DataValidationUtils;
 import com.shangfudata.collpay.util.RSAUtils;
 import com.shangfudata.collpay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -34,9 +37,10 @@ public class CollpayServiceImpl implements CollpayService {
     CollpayInfoRespository collpayInfoRespository;
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
-
     @Autowired
     CollpaySenderService collpaySenderService;
+    @Autowired
+    NoticeService noticeService;
 
 
 
@@ -49,50 +53,77 @@ public class CollpayServiceImpl implements CollpayService {
      * 1.下游传递一个json,获取其中的下游机构号以及签名
      * 2.调用查询方法，获取当前商户的密钥
      * 3.进行验签，字段解密，获取明文、
-     * 4.调用向上交易请求方法，参数为collpay对象
+     * 4.调用向上交易请求方法，参数为CollpayInfoToJson对象
      */
     public String downCollpay(String CollpayInfoToJson) throws  Exception{
+        //创建一个map装返回信息
+        Map responseMap = new HashMap();
+        //创建一个工具类对象
+        DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
         Gson gson = new Gson();
 
         Map map = gson.fromJson(CollpayInfoToJson, Map.class);
+
+        //验空
+        String message = dataValidationUtils.isNullValid(map);
+        if (!(message.equals(""))) {
+            responseMap.put("status", "FAIL");
+            responseMap.put("message", message);
+            return gson.toJson(responseMap);
+        }
+
+        //取签名
         String sign = (String)map.remove("sign");
-        //System.out.println("签名sign:"+sign);
         String s = gson.toJson(map);
 
         //下游传递上来的机构id，签名信息
         CollpayInfo collpayInfo = gson.fromJson(CollpayInfoToJson, CollpayInfo.class);
         String down_sp_id = collpayInfo.getDown_sp_id();
-        //String sign = collpayInfo.getSign();
 
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
         //拿到密钥(私钥)
-        String down_pri_key = downSpInfo.get().getDown_pri_key();
-        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+        String my_pri_key = downSpInfo.get().getMy_pri_key();
+        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
         //拿到密钥(公钥)
         String down_pub_key = downSpInfo.get().getDown_pub_key();
         RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
 
         //公钥验签
-        boolean b = RSAUtils.doCheck(s, sign, rsaPublicKey);
-        if (true == b){
+        if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
             //私钥解密字段
-            collpayInfo.setCard_name(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_name(), rsaPrivateKey));
-            collpayInfo.setCard_no(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_no(), rsaPrivateKey));
-            collpayInfo.setId_no(RSAUtils.privateKeyDecrypt(collpayInfo.getId_no(), rsaPrivateKey));
-            collpayInfo.setBank_mobile(RSAUtils.privateKeyDecrypt(collpayInfo.getBank_mobile(), rsaPrivateKey));
-            collpayInfo.setCvv2(RSAUtils.privateKeyDecrypt(collpayInfo.getCvv2(), rsaPrivateKey));
-            collpayInfo.setCard_valid_date(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_valid_date(), rsaPrivateKey));
+            downDecoding(collpayInfo, rsaPrivateKey);
+            //System.out.println(" >>> " + collpayInfo);
 
-            String collpayInfoToJson = gson.toJson(collpayInfo);
+            // 异常处理
+            dataValidationUtils.processCollPayException(collpayInfo , responseMap);
 
+            // 异常处理后判断是否需要返回
+            if("FAIL".equals(responseMap.get("status"))){
+                return gson.toJson(responseMap);
+            }
+
+            // 无异常，保存下游请求信息到数据库
             collpayInfoRespository.save(collpayInfo);
-            collpaySenderService.sendMessage("collpayinfo.test",collpayInfoToJson);
 
-            return "正在处理中。。。";
+            // 将信息发送到队列中
+            String collpayInfoToJson = gson.toJson(collpayInfo);
+            collpaySenderService.sendMessage("collpayinfo.notice", collpayInfoToJson);
+
+            // 封装响应数据
+            responseMap.put("sp_id",collpayInfo.getDown_sp_id());
+            responseMap.put("mch_id",collpayInfo.getDown_mch_id());
+            responseMap.put("status", "SUCCESS");
+            responseMap.put("trade_state", "正在处理中");
+
+            //返回响应参数
+            return gson.toJson(responseMap);
+
         }
-
-        return "信息错误，交易失败";
+        //验签失败，直接返回
+        responseMap.put("status", "FAIL");
+        responseMap.put("message", "签名错误");
+        return gson.toJson(responseMap);
 
     }
 
@@ -107,14 +138,14 @@ public class CollpayServiceImpl implements CollpayService {
      * 4.收到响应信息，存入传上来的collpay对象
      * 5.判断，保存数据库
      */
-    @JmsListener(destination = "collpayinfo.test")
-    public void collpayToUp(String collpayInfoToJson){
-        //System.out.println("队列中拿到的-----"+collpayInfoToJson);
+    @JmsListener(destination = "collpayinfo.notice")
+    public void collpayToUp(String collpayInfoToJson) throws Exception{
+        System.out.println("队列中拿到的-----"+collpayInfoToJson);
         Gson gson = new Gson();
 
         Map collpayInfoToMap = gson.fromJson(collpayInfoToJson, Map.class);
 
-        //设置上游服务商号及机构号
+        //设置上游服务商号及机构号（路由做好后，需改：从数据查）
         collpayInfoToMap.put("sp_id","1000");
         collpayInfoToMap.put("mch_id","100001000000000001");
 
@@ -129,12 +160,7 @@ public class CollpayServiceImpl implements CollpayService {
         //对上交易信息进行签名
         collpayInfoToMap.put("sign", SignUtils.sign(collpayInfoToMap, signKey));
         //AES加密操作
-        collpayInfoToMap.replace("card_name", AesUtils.aesEn((String)collpayInfoToMap.get("card_name"), aesKey));
-        collpayInfoToMap.replace("card_no", AesUtils.aesEn((String)collpayInfoToMap.get("card_no"), aesKey));
-        collpayInfoToMap.replace("id_no", AesUtils.aesEn((String)collpayInfoToMap.get("id_no"), aesKey));
-        collpayInfoToMap.replace("cvv2", AesUtils.aesEn((String)collpayInfoToMap.get("cvv2"), aesKey));
-        collpayInfoToMap.replace("card_valid_date", AesUtils.aesEn((String)collpayInfoToMap.get("card_valid_date"), aesKey));
-        collpayInfoToMap.replace("bank_mobile", AesUtils.aesEn((String)collpayInfoToMap.get("bank_mobile"), aesKey));
+        upEncoding(collpayInfoToMap, aesKey);
 
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, collpayInfoToMap, 12000);
@@ -149,16 +175,51 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfo.setCh_trade_no(response.getCh_trade_no());
         collpayInfo.setErr_code(response.getErr_code());
         collpayInfo.setErr_msg(response.getErr_msg());
-        System.out.println("------"+collpayInfo);
+
+        System.out.println(collpayInfo);
 
         if("SUCCESS".equals(response.getStatus())){
             //将订单信息表存储数据库
             collpayInfoRespository.save(collpayInfo);
-        }else{
-
+        }else if("FAIL".equals(response.getStatus())){
+            collpayInfoRespository.save(collpayInfo);
         }
 
+        // 向下游发送通知,参数为  当前订单
+        noticeService.notice(collpayInfoRespository.findByOutTradeNo(collpayInfo.getOut_trade_no()));
+
     }
+
+    /**
+     * RSA 解密方法
+     *
+     * @param collpayInfo
+     * @param rsaPrivateKey
+     */
+    public void downDecoding(CollpayInfo collpayInfo, RSAPrivateKey rsaPrivateKey) throws Exception {
+        collpayInfo.setCard_name(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_name(), rsaPrivateKey));
+        collpayInfo.setCard_no(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_no(), rsaPrivateKey));
+        collpayInfo.setId_no(RSAUtils.privateKeyDecrypt(collpayInfo.getId_no(), rsaPrivateKey));
+        collpayInfo.setBank_mobile(RSAUtils.privateKeyDecrypt(collpayInfo.getBank_mobile(), rsaPrivateKey));
+        collpayInfo.setCvv2(RSAUtils.privateKeyDecrypt(collpayInfo.getCvv2(), rsaPrivateKey));
+        collpayInfo.setCard_valid_date(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_valid_date(), rsaPrivateKey));
+    }
+
+    /**
+     * AES 加密方法
+     *
+     * @param map
+     * @param aesKey
+     */
+    public void upEncoding(Map map, String aesKey) {
+        map.replace("card_name", AesUtils.aesEn((String) map.get("card_name"), aesKey));
+        map.replace("card_no", AesUtils.aesEn((String) map.get("card_no"), aesKey));
+        map.replace("id_no", AesUtils.aesEn((String) map.get("id_no"), aesKey));
+        map.replace("cvv2", AesUtils.aesEn((String) map.get("cvv2"), aesKey));
+        map.replace("card_valid_date", AesUtils.aesEn((String) map.get("card_valid_date"), aesKey));
+        map.replace("bank_mobile", AesUtils.aesEn((String) map.get("bank_mobile"), aesKey));
+    }
+
 
 
 }

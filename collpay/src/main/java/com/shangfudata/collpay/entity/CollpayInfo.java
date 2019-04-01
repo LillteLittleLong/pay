@@ -90,4 +90,6 @@ public class CollpayInfo implements Serializable {
      */
     @Column(length = 32)
     private String notice_status;
+    @Column(length = 32)
+    private String notify_url;
 }

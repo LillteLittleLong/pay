@@ -21,7 +21,7 @@ public class RSAUtils {
 	 * @param privateKeyStr
 	 * @throws Exception
 	 */
-	public static RSAPrivateKey loadPrivateKey(String privateKeyStr) throws Exception{
+	public static RSAPrivateKey loadPrivateKey(String privateKeyStr) throws Exception {
 		try {
 			byte[] decode = Base64.getDecoder().decode(privateKeyStr);
 			/*BASE64Decoder base64Decoder= new BASE64Decoder();

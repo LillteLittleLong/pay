@@ -2,7 +2,6 @@ package com.shangfudata.collpay.service.impl;
 
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-import com.shangfudata.collpay.controller.NoticeController;
 import com.shangfudata.collpay.dao.CollpayInfoRespository;
 import com.shangfudata.collpay.entity.CollpayInfo;
 import com.shangfudata.collpay.entity.QueryInfo;
@@ -29,8 +28,6 @@ public class QueryServiceImpl implements QueryService {
     CollpayInfoRespository collpayInfoRespository;
     @Autowired
     NoticeService noticeService;
-    @Autowired
-    NoticeController noticeController;
 
     /**
      * 向上查询（轮询方法）
@@ -82,15 +79,10 @@ public class QueryServiceImpl implements QueryService {
                         String out_trade_no = collpayInfo.getOut_trade_no();
                         //System.out.println("订单号"+out_trade_no);
 
-                        String notice_status = "true";
                         //根据订单号，更新数据库交易信息表
                         collpayInfoRespository.updateByoutTradeNo(trade_state,err_code,err_msg,out_trade_no);
-
-                        //String out_trade_no1 = collpayInfo.getOut_trade_no();
-                        //collpayInfoRespository.updateNoticeStatus("true",out_trade_no1);
-                        noticeController.notice(out_trade_no);
-
-                        collpayInfoRespository.updateNoticeStatus(notice_status,out_trade_no);
+                        //发送通知
+                        noticeService.notice(collpayInfoRespository.findByOutTradeNo(out_trade_no));
                     }
                 //}
             }
