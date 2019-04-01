@@ -25,6 +25,7 @@
       <module name="eureka_server" options="-parameters" />
       <module name="gatewaypay" options="-parameters" />
       <module name="notice" options="-parameters" />
+      <module name="routing" options="-parameters" />
     </option>
   </component>
 </project>
