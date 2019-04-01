@@ -10,6 +10,7 @@
         <module name="distillpay" />
         <module name="easypay" />
         <module name="gatewaypay" />
+        <module name="routing" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
