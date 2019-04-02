@@ -95,17 +95,17 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("午饭晚饭呢");
-        collpayInfo.setTotal_fee("2222");
+        collpayInfo.setBody("发保护期为");
+        collpayInfo.setTotal_fee("65725");
         collpayInfo.setCard_type("CREDIT");
-        collpayInfo.setCard_name( "嘿嘿嘿");
+        collpayInfo.setCard_name( "昂贵的");
         collpayInfo.setCard_no("6217992900013005868");
         collpayInfo.setId_type("ID_CARD");
         collpayInfo.setId_no("342101196608282018");
         collpayInfo.setBank_mobile( "15563637881");
         collpayInfo.setCvv2("123");
         collpayInfo.setCard_valid_date("0318");
-        //collpayInfo.set("notify_url", "http://192.168.168.168");
+        collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
         collpayInfo.setNonce_str("12345678901234567890123456789011");
 
         //公钥加密
@@ -126,9 +126,9 @@ public class CollpayApplicationTests {
         System.out.println("签名信息"+sign);*/
 
         String collpayInfoToJson = gson.toJson(collpayInfo);
-
-        String collpay = collpayController.Collpay(collpayInfoToJson);
-        System.out.println(collpay);
+        System.out.println(collpayInfoToJson);
+        //String collpay = collpayController.Collpay(collpayInfoToJson);
+        //System.out.println(collpay);
     }
 
 
