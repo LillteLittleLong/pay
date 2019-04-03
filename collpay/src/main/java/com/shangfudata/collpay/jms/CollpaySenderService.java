@@ -17,7 +17,6 @@ public class CollpaySenderService {
      * @param message 发送的请求消息
      */
     public void sendMessage(String destinationName , String message) {
-        System.out.println("发送队列的信息：：："+message);
         ActiveMQQueue activeMQQueue = new ActiveMQQueue(destinationName);
         jmsMessagingTemplate.convertAndSend(activeMQQueue , message);
     }

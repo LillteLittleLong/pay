@@ -79,4 +79,12 @@ public class DistillpayInfo implements Serializable {
     @Column(length = 200)
     private String err_msg;                 //状态说明
 
+    /**
+     * 通知信息
+     */
+    @Column
+    private String notify_url;              //下游通知地址
+    @Column
+    private String notice_status;           //通知状态
+
 }

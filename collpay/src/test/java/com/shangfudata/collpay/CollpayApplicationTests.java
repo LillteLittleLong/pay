@@ -33,50 +33,6 @@ public class CollpayApplicationTests {
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
 
-    //@Test
-    public void testCollpay() throws Exception{
-
-        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
-
-        //获取公钥
-        String down_pub_key = downSpInfo.get().getDown_pub_key();
-        RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
-
-        //获取私钥
-        String down_pri_key = downSpInfo.get().getDown_pri_key();
-        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
-
-        Map<String, String> reqMap = new HashMap<String, String>();
-        reqMap.put("down_sp_id", "1001");
-        reqMap.put("down_mch_id", "101");
-        reqMap.put("out_trade_no", System.currentTimeMillis() + "");
-        reqMap.put("body", "test");
-        reqMap.put("total_fee", "3000");
-        reqMap.put("card_type", "CREDIT");
-        reqMap.put("card_name", "小鱼仔");
-        reqMap.put("card_no", "6222021001134258654");
-        reqMap.put("id_type", "ID_CARD");
-        reqMap.put("id_no", "410781199004016952");
-        reqMap.put("bank_mobile", "12345678912");
-        reqMap.put("cvv2", "123");
-        reqMap.put("card_valid_date", "0318");
-        //reqMap.put("notify_url", "http://192.168.168.168");
-        reqMap.put("nonce_str", "123456789");
-        //reqMap.put("sign", SignUtils.sign(reqMap, signKey));
-
-        reqMap.put("card_name", RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-        reqMap.put("card_no", RSAUtils.publicKeyEncrypt(reqMap.get("card_no"), rsaPublicKey));
-        reqMap.put("id_no",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-        reqMap.put("bank_mobile",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-        reqMap.put("cvv2",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-        reqMap.put("card_valid_date",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-
-        Gson gson = new Gson();
-        String s = gson.toJson(reqMap);
-
-        reqMap.put("sign",RSAUtils.sign(s,rsaPrivateKey));
-
-    }
 
     @Test
     public void contextLoads() throws Exception{
@@ -95,14 +51,14 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("发保护期为");
-        collpayInfo.setTotal_fee("65725");
+        collpayInfo.setBody("符合无穷尽");
+        collpayInfo.setTotal_fee("484893");
         collpayInfo.setCard_type("CREDIT");
-        collpayInfo.setCard_name( "昂贵的");
+        collpayInfo.setCard_name( "江南官网");
         collpayInfo.setCard_no("6217992900013005868");
         collpayInfo.setId_type("ID_CARD");
         collpayInfo.setId_no("342101196608282018");
-        collpayInfo.setBank_mobile( "15563637881");
+        collpayInfo.setBank_mobile("15563637881");
         collpayInfo.setCvv2("123");
         collpayInfo.setCard_valid_date("0318");
         collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
@@ -128,7 +84,7 @@ public class CollpayApplicationTests {
         String collpayInfoToJson = gson.toJson(collpayInfo);
         System.out.println(collpayInfoToJson);
         //String collpay = collpayController.Collpay(collpayInfoToJson);
-        //System.out.println(collpay);
+        ///System.out.println(collpay);
     }
 
 

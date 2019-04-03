@@ -1,13 +1,14 @@
-package com.shangfudata.collpay.service.impl;
+package com.shangfudata.distillpay.service.impl;
 
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-import com.shangfudata.collpay.dao.CollpayInfoRespository;
-import com.shangfudata.collpay.dao.DownSpInfoRespository;
-import com.shangfudata.collpay.entity.CollpayInfo;
-import com.shangfudata.collpay.entity.DownSpInfo;
-import com.shangfudata.collpay.service.NoticeService;
-import com.shangfudata.collpay.util.RSAUtils;
+
+import com.shangfudata.distillpay.dao.DistillpayInfoRespository;
+import com.shangfudata.distillpay.dao.DownSpInfoRespository;
+import com.shangfudata.distillpay.entity.DistillpayInfo;
+import com.shangfudata.distillpay.entity.DownSpInfo;
+import com.shangfudata.distillpay.service.NoticeService;
+import com.shangfudata.distillpay.util.RSAUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,17 +21,17 @@ import java.util.Optional;
 @Service
 public class NoticeServiceImpl implements NoticeService {
     @Autowired
-    CollpayInfoRespository collpayInfoRespository;
+    DistillpayInfoRespository distillpayInfoRespository;
 
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
 
     @Override
-    public void notice(CollpayInfo collpayInfo) /*throws Exception*/{
+    public void notice(DistillpayInfo distillpayInfo) /*throws Exception*/{
         Gson gson = new Gson();
 
         //拿到订单信息中的下游机构号，再拿密钥
-        String down_sp_id = collpayInfo.getDown_sp_id();
+        String down_sp_id = distillpayInfo.getDown_sp_id();
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
 
         RSAPublicKey rsaPublicKey = null;
@@ -48,15 +49,15 @@ public class NoticeServiceImpl implements NoticeService {
 
         Map map = new HashMap();
 
-        if("SUCCESS".equals(collpayInfo.getStatus())){
-            map.put("status",collpayInfo.getStatus());
-            map.put("trade_state",collpayInfo.getTrade_state());
-            map.put("err_code",collpayInfo.getErr_code());
-            map.put("err_msg",collpayInfo.getErr_msg());
-        }else if("FAIL".equals(collpayInfo.getStatus())){
-            map.put("status",collpayInfo.getStatus());
-            map.put("code",collpayInfo.getCode());
-            map.put("message",collpayInfo.getMessage());
+        if("SUCCESS".equals(distillpayInfo.getStatus())){
+            map.put("status",distillpayInfo.getStatus());
+            map.put("trade_state",distillpayInfo.getTrade_state());
+            map.put("err_code",distillpayInfo.getErr_code());
+            map.put("err_msg",distillpayInfo.getErr_msg());
+        }else if("FAIL".equals(distillpayInfo.getStatus())){
+            map.put("status",distillpayInfo.getStatus());
+            map.put("code",distillpayInfo.getCode());
+            map.put("message",distillpayInfo.getMessage());
         }
 
         //私钥签名
@@ -67,14 +68,14 @@ public class NoticeServiceImpl implements NoticeService {
         // 通知计数
         int count = 0;
         // 通知结果
-        String body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+        String body = HttpUtil.post(distillpayInfo.getNotify_url(), responseInfoJson, 10000);
 
         while(!(body.equals("SUCCESS")) && count != 5){
-            body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+            body = HttpUtil.post(distillpayInfo.getNotify_url(), responseInfoJson, 10000);
             count++;
         }
         String notice_status = "true";
-        collpayInfoRespository.updateNoticeStatus(notice_status,collpayInfo.getOut_trade_no());
+        distillpayInfoRespository.updateNoticeStatus(notice_status,distillpayInfo.getOut_trade_no());
 
 
     }

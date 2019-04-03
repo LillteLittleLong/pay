@@ -25,10 +25,26 @@ public interface DistillpayInfoRespository extends JpaRepository<DistillpayInfo,
     @Query("select d from DistillpayInfo d where d.out_trade_no =?1")
     DistillpayInfo findByOutTradeNo(String OutTradeNo);
 
+
     @Transactional
     @Modifying(clearAutomatically = true)
+    @Query("update DistillpayInfo e set e.trade_state =?1, e.err_code =?2, e.err_msg =?3 where e.out_trade_no =?4")
+    void updateSuccessTradeState(String TradeState,String errCode,String errMsg,String outTradeNo);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update DistillpayInfo e set e.status =?1, e.code =?2, e.message =?3 where e.out_trade_no =?4")
+    void updateFailTradeState(String status,String code,String message,String out_trade_no);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update DistillpayInfo c set c.notice_status =?1 where c.out_trade_no =?2")
+    void updateNoticeStatus(String noticeStatus,String OutTradeNo);
+
+   /* @Transactional
+    @Modifying(clearAutomatically = true)
     @Query("update DistillpayInfo d set d.trade_state =?1, d.err_code =?2, d.err_msg =?3 where d.out_trade_no =?4")
-    void updateByoutTradeNo(String tradeState, String errCode, String errMsg, String OutTradeNo);
+    void updateByoutTradeNo(String tradeState, String errCode, String errMsg, String OutTradeNo);*/
 
     /*@Query("update DistillpayInfo c set c.notice_status =?1 where c.out_trade_no =?2")
     void updateNoticeStatus(String NoticeStatus,String OutTradeNo);*//*

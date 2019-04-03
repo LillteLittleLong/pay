@@ -53,6 +53,8 @@ public class EasypayInfo implements Serializable {
     @Column(nullable = false)
     private String notify_url;              //通知地址
     @Column(nullable = false)
+    private String down_notify_url;         //下游的通知地址
+    @Column(nullable = false)
     private String bank_code;               //银行编码
     @Column(nullable = false)
     private String bank_name;               //开户行名称
@@ -78,6 +80,7 @@ public class EasypayInfo implements Serializable {
     private String code;                    //错误代码
     @Column(length = 200)
     private String message;                 //错误描述
+
     @Column(length = 32)
     private String ch_trade_no;             //系统订单号
     @Column(length = 20)
@@ -86,6 +89,10 @@ public class EasypayInfo implements Serializable {
     private String err_code;                //状态码
     @Column(length = 200)
     private String err_msg;                 //状态说明
+    @Column(length = 32)
+    private String settle_state_desc;       //结算状态
+    @Column(length = 32)
+    private String settle_state;            //结算状态说明
 
 
     /**

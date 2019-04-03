@@ -30,8 +30,8 @@ public class EasypayApplicationTests {
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
 
-    @Autowired
-    EasypayController easypayController;
+   // @Autowired
+    //EasypayController easypayController;
 
     @Autowired
     SubmitController submitController;
@@ -45,33 +45,34 @@ public class EasypayApplicationTests {
 
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
 
-        //获取公钥
-        String down_pub_key = downSpInfo.get().getDown_pub_key();
-        RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+       //获取公钥
+       String my_pub_key = downSpInfo.get().getMy_pub_key();
+       RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(my_pub_key);
 
-        //获取私钥
-        String down_pri_key = downSpInfo.get().getDown_pri_key();
-        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+       //获取私钥
+       String down_pri_key = downSpInfo.get().getDown_pri_key();
+       RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
 
         EasypayInfo easypayInfo = new EasypayInfo();
         easypayInfo.setDown_sp_id("1001");
         easypayInfo.setDown_mch_id("101");
 
         easypayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        easypayInfo.setBody("哈哈哈");
-        easypayInfo.setTotal_fee("666");
+        easypayInfo.setBody("给我发个");
+        easypayInfo.setTotal_fee("88888");
         easypayInfo.setCard_type("CREDIT");
-        easypayInfo.setCard_name( "呵呵呵");
-        easypayInfo.setCard_no("41844896001134258651");
+        easypayInfo.setCard_name( "应用");
+        easypayInfo.setCard_no("6217992900013005868");
         easypayInfo.setId_type("ID_CARD");
-        easypayInfo.setId_no("410781199004016952");
+        easypayInfo.setId_no("342101196608282018");
         easypayInfo.setBank_code("01030000");
         easypayInfo.setBank_name("农业银行");
-        easypayInfo.setBank_mobile("12345678912");
+        easypayInfo.setBank_mobile("15563637881");
         easypayInfo.setCvv2("123");
         easypayInfo.setCard_valid_date("0318");
-        easypayInfo.setNotify_url("http://192.168.88.188:8103/easypay/notice");
-        easypayInfo.setNonce_str("123456789");
+        easypayInfo.setNotify_url("http://192.168.88.188:8102/easypay/notice");
+        easypayInfo.setDown_notify_url("http://192.168.88.188:9001/consumer/notice");
+        easypayInfo.setNonce_str("12345678901234567890123456789011");
 
         //公钥加密
         easypayInfo.setCard_name(RSAUtils.publicKeyEncrypt(easypayInfo.getCard_name(), rsaPublicKey));

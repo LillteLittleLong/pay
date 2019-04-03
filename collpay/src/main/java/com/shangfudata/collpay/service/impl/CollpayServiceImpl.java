@@ -13,7 +13,6 @@ import com.shangfudata.collpay.util.AesUtils;
 import com.shangfudata.collpay.util.DataValidationUtils;
 import com.shangfudata.collpay.util.RSAUtils;
 import com.shangfudata.collpay.util.SignUtils;
-import javafx.util.converter.BigDecimalStringConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
@@ -99,7 +98,6 @@ public class CollpayServiceImpl implements CollpayService {
         if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
             //私钥解密字段
             downDecoding(collpayInfo, rsaPrivateKey);
-            //System.out.println(" >>> " + collpayInfo);
 
             // 异常处理
             dataValidationUtils.processCollPayException(collpayInfo , responseMap);
@@ -114,7 +112,7 @@ public class CollpayServiceImpl implements CollpayService {
 
             // 将信息发送到队列中
             String collpayInfoToJson = gson.toJson(collpayInfo);
-            collpaySenderService.sendMessage("collpayinfo.notice", collpayInfoToJson);
+            collpaySenderService.sendMessage("collpayinfoNotice.test", collpayInfoToJson);
 
             // 封装响应数据
             responseMap.put("sp_id",collpayInfo.getDown_sp_id());
@@ -144,9 +142,8 @@ public class CollpayServiceImpl implements CollpayService {
      * 4.收到响应信息，存入传上来的collpay对象
      * 5.判断，保存数据库
      */
-    @JmsListener(destination = "collpayinfo.notice")
+    @JmsListener(destination = "collpayinfoNotice.test")
     public void collpayToUp(String collpayInfoToJson) throws Exception{
-        //System.out.println("队列中拿到的-----"+collpayInfoToJson);
         Gson gson = new Gson();
 
         Map collpayInfoToMap = gson.fromJson(collpayInfoToJson, Map.class);
@@ -182,75 +179,17 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfo.setErr_code(response.getErr_code());
         collpayInfo.setErr_msg(response.getErr_msg());
 
-        System.out.println(collpayInfo);
-
         if("SUCCESS".equals(response.getStatus())){
+
+            //清分
+            Distribution(collpayInfo);
+
             //将订单信息表存储数据库
             collpayInfoRespository.save(collpayInfo);
-
-            //计算清分,需要拿到{上游商户的手续费率，下游商户的手续费率}
-            String down_mch_id = collpayInfo.getDown_mch_id();
-            String mch_id = collpayInfo.getMch_id();
-            //拿到上下游商户id后查询两张商户业务表
-            DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRespository.findByDownMchIdAndBusiType(down_mch_id, "collpay");
-            UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRespository.findByMchIdAndBusiType(mch_id, "collpay");
-
-            //交易金额
-            BigDecimal Total_fee = Convert.toBigDecimal(collpayInfo.getTotal_fee());
-            //获取上下游商户最低手续费及相应手续费率
-            BigDecimal down_commis_charge = Convert.toBigDecimal(downMchBusiInfo.getCommis_charge());
-            BigDecimal down_min_charge = Convert.toBigDecimal(downMchBusiInfo.getMin_charge());
-            BigDecimal up_commis_charge = Convert.toBigDecimal(upMchBusiInfo.getCommis_charge());
-            BigDecimal up_min_charge = Convert.toBigDecimal(upMchBusiInfo.getMin_charge());
-
-            //定义上下游最终手续费
-            int i = down_commis_charge.multiply(Total_fee).compareTo(down_min_charge);
-            int j = up_commis_charge.multiply(Total_fee).compareTo(up_min_charge);
-
-            BigDecimal final_down_charge;
-            if( (-1) == i){
-                final_down_charge = down_min_charge;
-            }else if( (1) == i ){
-                final_down_charge = down_commis_charge.multiply(Total_fee);
-            }else{
-                final_down_charge = down_min_charge;
-            }
-            BigDecimal final_up_charge ;
-            if( (-1) == j){
-                final_up_charge = up_min_charge;
-            }else if( (1) == j ){
-                final_up_charge = up_commis_charge.multiply(Total_fee);
-            }else{
-                final_up_charge = up_min_charge;
-            }
-
-            //计算利润,先四舍五入小数位
-            final_down_charge = final_down_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
-            System.out.println("舍弃小数位"+final_down_charge);
-            final_up_charge = final_up_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
-            System.out.println("舍弃小数位"+final_up_charge);
-            BigDecimal profit =final_down_charge.subtract(final_up_charge);
-
-            DistributionInfo distributionInfo = new DistributionInfo();
-            distributionInfo.setOut_trade_no(collpayInfo.getOut_trade_no());
-            distributionInfo.setBusi_type("collpay");
-            distributionInfo.setDown_mch_id(collpayInfo.getDown_mch_id());
-            distributionInfo.setDown_charge(final_down_charge.toString());
-            distributionInfo.setUp_mch_id(collpayInfo.getMch_id());
-            distributionInfo.setUp_charge(final_up_charge.toString());
-            distributionInfo.setProfit(profit.toString());
-            distributionInfo.setTrad_amount(Total_fee.toString());
-
-            //存数据库
-            distributionInfoRespository.save(distributionInfo);
-
-
         }else if("FAIL".equals(response.getStatus())){
             collpayInfoRespository.save(collpayInfo);
         }
 
-        // 向下游发送通知,参数为  当前订单
-        noticeService.notice(collpayInfoRespository.findByOutTradeNo(collpayInfo.getOut_trade_no()));
 
     }
 
@@ -282,6 +221,68 @@ public class CollpayServiceImpl implements CollpayService {
         map.replace("cvv2", AesUtils.aesEn((String) map.get("cvv2"), aesKey));
         map.replace("card_valid_date", AesUtils.aesEn((String) map.get("card_valid_date"), aesKey));
         map.replace("bank_mobile", AesUtils.aesEn((String) map.get("bank_mobile"), aesKey));
+    }
+
+    /**
+     * 清分方法
+     *
+     * @param collpayInfo
+     */
+    public void Distribution(CollpayInfo collpayInfo){
+        //计算清分,需要拿到{上游商户的手续费率，下游商户的手续费率}
+        String down_mch_id = collpayInfo.getDown_mch_id();
+        String mch_id = collpayInfo.getMch_id();
+
+        //拿到上下游商户id后查询两张商户业务表
+        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRespository.findByDownMchIdAndBusiType(down_mch_id, "collpay");
+        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRespository.findByMchIdAndBusiType(mch_id, "collpay");
+
+        //交易金额
+        BigDecimal Total_fee = Convert.toBigDecimal(collpayInfo.getTotal_fee());
+        //获取上下游商户最低手续费及相应手续费率
+        BigDecimal down_commis_charge = Convert.toBigDecimal(downMchBusiInfo.getCommis_charge());
+        BigDecimal down_min_charge = Convert.toBigDecimal(downMchBusiInfo.getMin_charge());
+        BigDecimal up_commis_charge = Convert.toBigDecimal(upMchBusiInfo.getCommis_charge());
+        BigDecimal up_min_charge = Convert.toBigDecimal(upMchBusiInfo.getMin_charge());
+
+        //定义上下游最终手续费
+        int i = down_commis_charge.multiply(Total_fee).compareTo(down_min_charge);
+        int j = up_commis_charge.multiply(Total_fee).compareTo(up_min_charge);
+
+        BigDecimal final_down_charge;
+        if( (-1) == i){
+            final_down_charge = down_min_charge;
+        }else if( (1) == i ){
+            final_down_charge = down_commis_charge.multiply(Total_fee);
+        }else{
+            final_down_charge = down_min_charge;
+        }
+        BigDecimal final_up_charge ;
+        if( (-1) == j){
+            final_up_charge = up_min_charge;
+        }else if( (1) == j ){
+            final_up_charge = up_commis_charge.multiply(Total_fee);
+        }else{
+            final_up_charge = up_min_charge;
+        }
+
+        //计算利润,先四舍五入小数位
+        final_down_charge = final_down_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
+        final_up_charge = final_up_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
+        BigDecimal profit =final_down_charge.subtract(final_up_charge);
+
+        DistributionInfo distributionInfo = new DistributionInfo();
+        distributionInfo.setOut_trade_no(collpayInfo.getOut_trade_no());
+        distributionInfo.setBusi_type("collpay");
+        distributionInfo.setDown_mch_id(collpayInfo.getDown_mch_id());
+        distributionInfo.setDown_charge(final_down_charge.toString());
+        distributionInfo.setUp_mch_id(collpayInfo.getMch_id());
+        distributionInfo.setUp_charge(final_up_charge.toString());
+        distributionInfo.setProfit(profit.toString());
+        distributionInfo.setTrad_amount(Total_fee.toString());
+
+        //存数据库
+        distributionInfoRespository.save(distributionInfo);
     }
 
 

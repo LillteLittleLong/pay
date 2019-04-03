@@ -1,10 +1,12 @@
 package com.shangfudata.easypay.service;
 
+import com.shangfudata.easypay.entity.EasypayInfo;
+
 import java.util.Map;
 
 public interface NoticeService {
 
-    String Upnotice(String outTradeNo,String tradeState);
+    String Upnotice(Map<String,String> map);
 
-    void ToDown(String destinationName,String NoticeInfoToJson);
+    void ToDown(EasypayInfo easypayInfo);
 }

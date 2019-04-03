@@ -32,37 +32,39 @@ public class GatewaypayInfo  {
 
     @Id
     @Column(length = 32 , nullable = false)
-    private String out_trade_no;    // 商户订单号
+    private String out_trade_no;            // 商户订单号
     @Column(length = 20 , nullable = false)
-    private String total_fee;       // 总金额
+    private String total_fee;               // 总金额
     @Column(length = 100 , nullable = false)
-    private String body;            // 商品名称
+    private String body;                    // 商品名称
     @Column(length = 100 , nullable = false)
-    private String notify_url;      // 异步通知地址
+    private String notify_url;              // 异步通知地址(接收上游)
+    @Column(nullable = false)
+    private String down_notify_url;         //下游的通知地址
     @Column(length = 100)
-    private String call_back_url;   // 前台回显地址
+    private String call_back_url;           // 前台回显地址
     @Column(length = 32 , nullable = false)
-    private String card_type;       // 卡类型
+    private String card_type;               // 卡类型
     @Column(length = 32 , nullable = false)
-    private String bank_code;       // 支付银行
+    private String bank_code;               // 支付银行
 
     /**
      * 每次请求或响应必带参数
      */
     @Column(length = 32)
-    private String nonce_str;       // 随机字符串
+    private String nonce_str;               // 随机字符串
     @Transient
-    private String sign;            // 签名
+    private String sign;                    // 签名
 
     /**
      * 响应结果
      */
     @Column(length = 20)
-    private String status;          // 受理表示
+    private String status;                  // 受理表示
     @Column(length = 20)
-    private String code;            // 错误代码
+    private String code;                    // 错误代码
     @Column(length = 200)
-    private String message;         // 错误描述
+    private String message;                 // 错误描述
 
 
     @Column(length = 32)

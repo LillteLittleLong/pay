@@ -8,6 +8,7 @@ import com.shangfudata.gatewaypay.dao.GatewaypayInfoRespository;
 import com.shangfudata.gatewaypay.entity.DownSpInfo;
 import com.shangfudata.gatewaypay.entity.GatewaypayInfo;
 import com.shangfudata.gatewaypay.service.GatewaypayService;
+import com.shangfudata.gatewaypay.util.DataValidationUtils;
 import com.shangfudata.gatewaypay.util.RSAUtils;
 import com.shangfudata.gatewaypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -40,13 +42,25 @@ public class GatewaypayServiceImpl implements GatewaypayService {
      */
     public String downGatewaypay(String gatewaypayInfoToJson) throws Exception {
 
-        System.out.println("####：：："+gatewaypayInfoToJson);
+        //创建一个map装返回信息
+        Map responseMap = new HashMap();
+        //创建一个工具类对象
+        DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
         Gson gson = new Gson();
 
         Map map = gson.fromJson(gatewaypayInfoToJson, Map.class);
+
+        //验空
+        String message = dataValidationUtils.isNullValid(map);
+        if (!(message.equals(""))) {
+            responseMap.put("status", "FAIL");
+            responseMap.put("message", message);
+            return gson.toJson(responseMap);
+        }
+
+        //取签名
         String sign = (String)map.remove("sign");
-        System.out.println("sign::::"+sign);
         String s = gson.toJson(map);
 
         //下游传递上来的机构id，签名信息
@@ -62,18 +76,25 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
 
         //公钥验签
-        boolean b = RSAUtils.doCheck(s, sign, rsaPublicKey);
-        if (true == b){
-            //gatewaypayInfo.setTrade_state("NOTPAY");
-            gatewaypayInfoRespository.save(gatewaypayInfo);
+        if (RSAUtils.doCheck(s, sign, rsaPublicKey)){
 
-            String gwpayInfoToJson = gson.toJson(gatewaypayInfo);
-            //distillpaySenderService.sendMessage("distillpayinfo.test",dispayInfoToJson);
+            // 异常处理
+            dataValidationUtils.processMyException(gatewaypayInfo , responseMap);
 
-            return gatewaypayToUp(gwpayInfoToJson);
+            // 异常处理后判断是否需要返回
+            if("FAIL".equals(responseMap.get("status"))){
+                return gson.toJson(responseMap);
+            }
+
+            // 无异常，调用向上交易方法
+           return gatewaypayToUp(gson.toJson(gatewaypayInfo));
+
         }
 
-        return "信息错误，交易失败";
+        //验签失败，直接返回
+        responseMap.put("status", "FAIL");
+        responseMap.put("message", "签名错误");
+        return gson.toJson(responseMap);
 
     }
 
@@ -83,11 +104,11 @@ public class GatewaypayServiceImpl implements GatewaypayService {
      * @return
      */
     public String gatewaypayToUp(String gatewaypayInfoToJson) {
-
-
         Gson gson = new Gson();
 
         Map gatewaypayInfoToMap = gson.fromJson(gatewaypayInfoToJson, Map.class);
+
+        System.out.println("：："+gatewaypayInfoToJson);
 
         //设置上游服务商号及机构号
         gatewaypayInfoToMap.put("sp_id","1000");
@@ -100,19 +121,25 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         //移除下游信息
         gatewaypayInfoToMap.remove("down_sp_id");
         gatewaypayInfoToMap.remove("down_mch_id");
+        gatewaypayInfoToMap.remove("down_notify_url");
         gatewaypayInfoToMap.remove("sign");
+
         //对上交易信息进行签名
         gatewaypayInfoToMap.put("sign", SignUtils.sign(gatewaypayInfoToMap, signKey));
-        //System.out.println("添加签名后：：："+gatewaypayInfoToMap);
+
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, gatewaypayInfoToMap, 12000);
 
+        //判断是否为html代码块，
         boolean contains = responseInfo.contains("<html>");
         if(contains){
+            //正确响应，即html代码块，需要自设交易状态
             gatewaypayInfo.setStatus("SUCCESS");
-            gatewaypayInfo.setTrade_state("PROCESSING");
+            gatewaypayInfo.setTrade_state("NOTPAY");
             gatewaypayInfoRespository.save(gatewaypayInfo);
+
         }else{
+            //错误响应，返回的是错误信息
             GatewaypayInfo response = gson.fromJson(responseInfo, GatewaypayInfo.class);
 
             gatewaypayInfo.setTrade_state(response.getStatus());
@@ -123,8 +150,12 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             gatewaypayInfoRespository.save(gatewaypayInfo);
         }
 
+        //无论正确还是错误都同步返回
         return responseInfo;
     }
+
+
+
 
 
 }

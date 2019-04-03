@@ -1,20 +1,22 @@
 package com.shangfudata.easypay.service.impl;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-import com.shangfudata.easypay.dao.DownSpInfoRespository;
-import com.shangfudata.easypay.dao.EasypayInfoRespository;
-import com.shangfudata.easypay.entity.DownSpInfo;
-import com.shangfudata.easypay.entity.EasypayInfo;
+import com.shangfudata.easypay.dao.*;
+import com.shangfudata.easypay.entity.*;
 import com.shangfudata.easypay.service.EasypayService;
 import com.shangfudata.easypay.util.AesUtils;
+import com.shangfudata.easypay.util.DataValidationUtils;
 import com.shangfudata.easypay.util.RSAUtils;
 import com.shangfudata.easypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -23,13 +25,16 @@ public class EasypayServiceImpl implements EasypayService {
 
     @Autowired
     EasypayInfoRespository easypayInfoRespository;
-
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
+
 
     String methodUrl = "http://192.168.88.65:8888/gate/epay/epapply";
     String signKey = "00000000000000000000000000000000";
     String aesKey = "77A231F976FF932024B68469EA9823F3";//上游给的密钥
+
+    //创建一个map装返回信息
+    Map responseMap = new HashMap();
 
     /**
      * 对下开放快捷交易方法
@@ -38,11 +43,22 @@ public class EasypayServiceImpl implements EasypayService {
      * @throws Exception
      */
     public String downEasypay(String easypayInfoToJson) throws Exception{
-        System.out.println("下单请求信息----："+easypayInfoToJson);
+
+        //创建一个工具类对象
+        DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
         Gson gson = new Gson();
 
         Map map = gson.fromJson(easypayInfoToJson, Map.class);
+        //验空
+        String message = dataValidationUtils.isNullValid(map);
+        if (!(message.equals(""))) {
+            responseMap.put("status", "FAIL");
+            responseMap.put("message", message);
+            return gson.toJson(responseMap);
+        }
+
+        //取签名
         String sign = (String)map.remove("sign");
         String s = gson.toJson(map);
 
@@ -52,30 +68,35 @@ public class EasypayServiceImpl implements EasypayService {
 
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
         //拿到密钥(私钥)
-        String down_pri_key = downSpInfo.get().getDown_pri_key();
-        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+        String my_pri_key = downSpInfo.get().getMy_pri_key();
+        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
         //拿到密钥(公钥)
         String down_pub_key = downSpInfo.get().getDown_pub_key();
         RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
 
         //公钥验签
-        boolean b = RSAUtils.doCheck(s, sign, rsaPublicKey);
-        if (true == b){
+        if (RSAUtils.doCheck(s, sign, rsaPublicKey)){
             //私钥解密字段
-            easypayInfo.setCard_name(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_name(), rsaPrivateKey));
-            easypayInfo.setCard_no(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_no(), rsaPrivateKey));
-            easypayInfo.setId_no(RSAUtils.privateKeyDecrypt(easypayInfo.getId_no(), rsaPrivateKey));
-            easypayInfo.setBank_mobile(RSAUtils.privateKeyDecrypt(easypayInfo.getBank_mobile(), rsaPrivateKey));
-            easypayInfo.setCvv2(RSAUtils.privateKeyDecrypt(easypayInfo.getCvv2(), rsaPrivateKey));
-            easypayInfo.setCard_valid_date(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_valid_date(), rsaPrivateKey));
+            downDecoding(easypayInfo, rsaPrivateKey);
 
-            String easypayInfotoJson = gson.toJson(easypayInfo);
+            // 异常处理
+            dataValidationUtils.processMyException(easypayInfo , responseMap);
 
-            //调用上游交易方法
-            return easypayToUp(easypayInfotoJson);
+            // 异常处理后判断是否需要返回
+            if("FAIL".equals(responseMap.get("status"))){
+                return gson.toJson(responseMap);
+            }
+
+            //无异常，则调用上游交易方法
+            easypayToUp(gson.toJson(easypayInfo));
+            //返回响应参数
+            return gson.toJson(responseMap);
         }
 
-        return "信息错误，交易失败";
+        //验签失败，直接返回
+        responseMap.put("status", "FAIL");
+        responseMap.put("message", "签名错误");
+        return gson.toJson(responseMap);
     }
 
     public String easypayToUp(String easypayInfoToJson) {
@@ -93,22 +114,19 @@ public class EasypayServiceImpl implements EasypayService {
         //移除下游信息
         easypayInfoToMap.remove("down_sp_id");
         easypayInfoToMap.remove("down_mch_id");
+        easypayInfoToMap.remove("down_notify_url");
         easypayInfoToMap.remove("sign");
 
         //对上交易信息进行签名
         easypayInfoToMap.put("sign", SignUtils.sign(easypayInfoToMap, signKey));
         //AES加密操作
-        easypayInfoToMap.replace("card_name", AesUtils.aesEn((String)easypayInfoToMap.get("card_name"), aesKey));
-        easypayInfoToMap.replace("card_no", AesUtils.aesEn((String)easypayInfoToMap.get("card_no"), aesKey));
-        easypayInfoToMap.replace("id_no", AesUtils.aesEn((String)easypayInfoToMap.get("id_no"), aesKey));
-        easypayInfoToMap.replace("cvv2", AesUtils.aesEn((String)easypayInfoToMap.get("cvv2"), aesKey));
-        easypayInfoToMap.replace("card_valid_date", AesUtils.aesEn((String)easypayInfoToMap.get("card_valid_date"), aesKey));
-        easypayInfoToMap.replace("bank_mobile", AesUtils.aesEn((String)easypayInfoToMap.get("bank_mobile"), aesKey));
+        upEncoding(easypayInfoToMap, aesKey);
+
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, easypayInfoToMap, 12000);
-        //获取响应信息，并用一个新CollpayInfo对象装下这些响应信息
+        //获取响应信息，并用一个新对象装下这些响应信息
         EasypayInfo response = gson.fromJson(responseInfo, EasypayInfo.class);
-        //将响应信息存储到当前downCollpayInfo及UpCollpayInfo请求交易完整信息中
+        //将响应信息存储到交易完整信息中
         easypayInfo.setTrade_state(response.getTrade_state());
         easypayInfo.setStatus(response.getStatus());
         easypayInfo.setCode(response.getCode());
@@ -118,12 +136,51 @@ public class EasypayServiceImpl implements EasypayService {
         easypayInfo.setErr_msg(response.getErr_msg());
 
         if("SUCCESS".equals(response.getStatus())){
+
             //将订单信息表存储数据库
             easypayInfoRespository.save(easypayInfo);
-        }else{
-
+        }else if("FAIL".equals(response.getStatus())){
+            easypayInfoRespository.save(easypayInfo);
         }
 
-        return "响应信息："+responseInfo;
+        // 封装响应数据
+        responseMap.put("sp_id",easypayInfo.getDown_sp_id());
+        responseMap.put("mch_id",easypayInfo.getDown_mch_id());
+        responseMap.put("status", "SUCCESS");
+        responseMap.put("trade_state", "正在处理中,请输入验证码");
+        return gson.toJson(responseMap);
     }
+
+
+    /**
+     * RSA 解密方法
+     *
+     * @param easypayInfo
+     * @param rsaPrivateKey
+     */
+    public void downDecoding(EasypayInfo easypayInfo, RSAPrivateKey rsaPrivateKey) throws Exception {
+        easypayInfo.setCard_name(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_name(), rsaPrivateKey));
+        easypayInfo.setCard_no(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_no(), rsaPrivateKey));
+        easypayInfo.setId_no(RSAUtils.privateKeyDecrypt(easypayInfo.getId_no(), rsaPrivateKey));
+        easypayInfo.setBank_mobile(RSAUtils.privateKeyDecrypt(easypayInfo.getBank_mobile(), rsaPrivateKey));
+        easypayInfo.setCvv2(RSAUtils.privateKeyDecrypt(easypayInfo.getCvv2(), rsaPrivateKey));
+        easypayInfo.setCard_valid_date(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_valid_date(), rsaPrivateKey));
+    }
+
+    /**
+     * AES 加密方法
+     *
+     * @param map
+     * @param aesKey
+     */
+    public void upEncoding(Map map, String aesKey) {
+        map.replace("card_name", AesUtils.aesEn((String) map.get("card_name"), aesKey));
+        map.replace("card_no", AesUtils.aesEn((String) map.get("card_no"), aesKey));
+        map.replace("id_no", AesUtils.aesEn((String) map.get("id_no"), aesKey));
+        map.replace("cvv2", AesUtils.aesEn((String) map.get("cvv2"), aesKey));
+        map.replace("card_valid_date", AesUtils.aesEn((String) map.get("card_valid_date"), aesKey));
+        map.replace("bank_mobile", AesUtils.aesEn((String) map.get("bank_mobile"), aesKey));
+    }
+
+
 }
