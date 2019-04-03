@@ -1,18 +1,13 @@
 package com.shangfudata.collpay.service.impl;
 
-import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.dao.CollpayInfoRespository;
 import com.shangfudata.collpay.dao.DownSpInfoRespository;
 import com.shangfudata.collpay.entity.CollpayInfo;
-import com.shangfudata.collpay.entity.DownMchBusiInfo;
 import com.shangfudata.collpay.entity.DownSpInfo;
-import com.shangfudata.collpay.entity.UpMchBusiInfo;
 import com.shangfudata.collpay.eureka.EurekaCollpayClient;
 import com.shangfudata.collpay.jms.CollpaySenderService;
-import com.shangfudata.collpay.routing.DownRoutingService;
-import com.shangfudata.collpay.routing.UpRoutingService;
 import com.shangfudata.collpay.service.CollpayService;
 import com.shangfudata.collpay.service.NoticeService;
 import com.shangfudata.collpay.util.AesUtils;
@@ -26,7 +21,6 @@ import org.springframework.stereotype.Service;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -45,10 +39,6 @@ public class CollpayServiceImpl implements CollpayService {
     CollpaySenderService collpaySenderService;
     @Autowired
     NoticeService noticeService;
-    //@Autowired
-    //DownRoutingService downRoutingService;
-    //@Autowired
-    //UpRoutingService upRoutingService;
     @Autowired
     EurekaCollpayClient eurekaCollpayClient;
 
@@ -110,26 +100,42 @@ public class CollpayServiceImpl implements CollpayService {
                 return gson.toJson(responseMap);
             }
 
-            // 路由匹配通道 , 获取通道业务信息
-            String routingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee());
-
-            Map routingMap = gson.fromJson(routingResponse, Map.class);
+            /* ------------------------ 路由分发 ------------------------------ */
+            // 下游通道路由分发处理
+            String downRoutingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee());
+            Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
             // 无可用通道返回响应
-            if ("FAIL".equals(routingMap.get("status"))) {
-                return gson.toJson(routingMap);
+            if ("FAIL".equals(downRoutingMap.get("status"))) {
+                return gson.toJson(downRoutingMap);
             }
 
-            // TODO: 2019/4/2 计算通道利润
-            // TODO: 2019/4/2 在这里加上计算下游通道利润的代码
+            // 需要从数据库中查询内容
+            collpayInfo.setMch_id("100001000000000001");
+            collpayInfo.setSp_id("1000");
 
+            // 下游如果有可用通道 查看 上游通道路由分发处理
+            String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getMch_id(), collpayInfo.getSp_id(), collpayInfo.getTotal_fee());
+            Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
+
+            // 无可用通道返回响应
+            if ("FAIL".equals(upRoutingMap.get("status"))) {
+                return gson.toJson(upRoutingMap);
+            }
+            /* ------------------------ 路由分发 ------------------------------ */
 
             // 无异常，保存下游请求信息到数据库
             collpayInfoRespository.save(collpayInfo);
 
             // 将信息发送到队列中
             String collpayInfoToJson = gson.toJson(collpayInfo);
-            collpaySenderService.sendMessage("collpayinfo1.notice", collpayInfoToJson);
+
+            Map upCollpayInfoMap = gson.fromJson(collpayInfoToJson, Map.class);
+            upCollpayInfoMap.put("down_busi_id", downRoutingMap.get("down_busi_id"));
+            upCollpayInfoMap.put("up_busi_id", upRoutingMap.get("up_busi_id"));
+            String upCollpayInfoJson = gson.toJson(upCollpayInfoMap);
+
+            collpaySenderService.sendMessage("collpayinfo1.notice", upCollpayInfoJson);
 
             // 封装响应数据
             responseMap.put("sp_id", collpayInfo.getDown_sp_id());
@@ -149,12 +155,13 @@ public class CollpayServiceImpl implements CollpayService {
 
     /**
      * 向上交易方法
+     * 1.设置上游机构号和商户号
+     * 2.删除下游机构号和商户号以及签名
+     * 3.向上签名，加密，发送请求
+     * 4.收到响应信息，存入传上来的collpay对象
+     * 5.判断，保存数据库
      *
-     * @param collpayInfoToJson 1.设置上游机构号和商户号
-     *                          2.删除下游机构号和商户号以及签名
-     *                          3.向上签名，加密，发送请求
-     *                          4.收到响应信息，存入传上来的collpay对象
-     *                          5.判断，保存数据库
+     * @param collpayInfoToJson
      */
     @JmsListener(destination = "collpayinfo1.notice")
     public void collpayToUp(String collpayInfoToJson) {
@@ -163,30 +170,13 @@ public class CollpayServiceImpl implements CollpayService {
         Gson gson = new Gson();
         Map collpayInfoToMap = gson.fromJson(collpayInfoToJson, Map.class);
 
-        //设置上游服务商号及机构号（路由做好后，需改：从数据查）
-        collpayInfoToMap.put("sp_id", "1000");
-        collpayInfoToMap.put("mch_id", "100001000000000001");
+        // 从 map 中删除并获取两个通道业务 id .
+        String down_busi_id = (String) collpayInfoToMap.remove("down_busi_id");
+        String up_busi_id = (String) collpayInfoToMap.remove("up_busi_id");
 
         //将json串转为对象，便于存储数据库
         String s = gson.toJson(collpayInfoToMap);
         CollpayInfo collpayInfo = gson.fromJson(s, CollpayInfo.class);
-
-        // 上游路由分发处理
-        String routingResponse = eurekaCollpayClient.upRouting(collpayInfo.getMch_id(), collpayInfo.getSp_id(), collpayInfo.getTotal_fee());
-        Map map = gson.fromJson(routingResponse, Map.class);
-
-        // 当上游无通道 , 通知给下游
-        if ("FAIL".equals(map.get("status"))) {
-            // 通道
-            //noticeService.notice(collpayInfoRespository.findByOutTradeNo(collpayInfo.getOut_trade_no()));
-            return;
-        }
-
-        // TODO: 2019/4/2 计算通道利润
-        // TODO: 2019/4/2 在这里加上计算上游通道利润的代码
-        // TODO: 2019/4/2 总利润 = 下游利润 - 上游利润
-        // TODO: 2019/4/3 将利润存入数据库
-
 
         //移除下游信息
         collpayInfoToMap.remove("down_sp_id");
@@ -212,8 +202,22 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfo.setErr_msg(response.getErr_msg());
 
         if ("SUCCESS".equals(response.getStatus())) {
+            // TODO: 2019/4/3 清分 , 计算利润
+            // TODO: 2019/4/3 下游业务信息 id  , 上游业务信息 id , 商品订单号
+
+            // TODO: 2019/4/2 计算通道利润
+            // TODO: 2019/4/2 在这里加上计算上游通道利润的代码
+            // TODO: 2019/4/2 总利润 = 下游利润 - 上游利润
+            // TODO: 2019/4/3 将利润存入数据库
+
+
             //将订单信息表存储数据库
             collpayInfoRespository.save(collpayInfo);
+
+            // down_busi_id
+            // up_busi_id
+
+
         } else if ("FAIL".equals(response.getStatus())) {
             collpayInfoRespository.save(collpayInfo);
         }

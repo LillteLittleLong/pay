@@ -1,4 +1,4 @@
-package com.shangfudata.collpay.eureka;
+package com.shangfudata.distillpay.eureka;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.stereotype.Service;
@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  */
 @Service
 @FeignClient("routing-client")
-public interface EurekaCollpayClient {
+public interface EurekaDistillpayClient {
 
     /**
      * 调用 routing 下游路由分发接口

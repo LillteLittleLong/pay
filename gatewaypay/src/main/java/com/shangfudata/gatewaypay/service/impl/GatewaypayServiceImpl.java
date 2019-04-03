@@ -2,18 +2,16 @@ package com.shangfudata.gatewaypay.service.impl;
 
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-
 import com.shangfudata.gatewaypay.dao.DownSpInfoRespository;
 import com.shangfudata.gatewaypay.dao.GatewaypayInfoRespository;
 import com.shangfudata.gatewaypay.entity.DownSpInfo;
 import com.shangfudata.gatewaypay.entity.GatewaypayInfo;
+import com.shangfudata.gatewaypay.eureka.EurekaGatewaypayClient;
 import com.shangfudata.gatewaypay.service.GatewaypayService;
 import com.shangfudata.gatewaypay.util.RSAUtils;
 import com.shangfudata.gatewaypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Map;
@@ -28,9 +26,10 @@ public class GatewaypayServiceImpl implements GatewaypayService {
 
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
-
     @Autowired
     GatewaypayInfoRespository gatewaypayInfoRespository;
+    @Autowired
+    EurekaGatewaypayClient eurekaGatewaypayClient;
 
     /**
      * 对下开放的网关交易
@@ -62,19 +61,26 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
 
         //公钥验签
-        boolean b = RSAUtils.doCheck(s, sign, rsaPublicKey);
-        if (true == b){
-            //gatewaypayInfo.setTrade_state("NOTPAY");
+        if (RSAUtils.doCheck(s, sign, rsaPublicKey)){
+            // TODO: 2019/4/3 数据效验
+
+
+            // 下游请求分发路由处理
+            String routingString = eurekaGatewaypayClient.downRouting(gatewaypayInfo.getDown_mch_id(), gatewaypayInfo.getDown_sp_id(), gatewaypayInfo.getTotal_fee());
+
+            Map<String , String> routingMap = gson.fromJson(routingString, Map.class);
+            if(routingMap.get("status").equals("FAIL")){
+                // 无通道可用返回响应信息
+                return gson.toJson(routingMap);
+            }
+
             gatewaypayInfoRespository.save(gatewaypayInfo);
 
             String gwpayInfoToJson = gson.toJson(gatewaypayInfo);
-            //distillpaySenderService.sendMessage("distillpayinfo.test",dispayInfoToJson);
 
             return gatewaypayToUp(gwpayInfoToJson);
         }
-
         return "信息错误，交易失败";
-
     }
 
     /**
@@ -83,8 +89,6 @@ public class GatewaypayServiceImpl implements GatewaypayService {
      * @return
      */
     public String gatewaypayToUp(String gatewaypayInfoToJson) {
-
-
         Gson gson = new Gson();
 
         Map gatewaypayInfoToMap = gson.fromJson(gatewaypayInfoToJson, Map.class);
@@ -103,7 +107,6 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         gatewaypayInfoToMap.remove("sign");
         //对上交易信息进行签名
         gatewaypayInfoToMap.put("sign", SignUtils.sign(gatewaypayInfoToMap, signKey));
-        //System.out.println("添加签名后：：："+gatewaypayInfoToMap);
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, gatewaypayInfoToMap, 12000);
 
@@ -114,17 +117,13 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             gatewaypayInfoRespository.save(gatewaypayInfo);
         }else{
             GatewaypayInfo response = gson.fromJson(responseInfo, GatewaypayInfo.class);
-
             gatewaypayInfo.setTrade_state(response.getStatus());
             gatewaypayInfo.setStatus(response.getStatus());
             gatewaypayInfo.setCode(response.getCode());
             gatewaypayInfo.setMessage(response.getMessage());
-
             gatewaypayInfoRespository.save(gatewaypayInfo);
         }
-
         return responseInfo;
     }
-
 
 }

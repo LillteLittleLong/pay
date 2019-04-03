@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: service-distillpay
+    name: distillpayj-client
   datasource:
     url: jdbc:mysql://192.168.88.81:3306/shangfudata?serverTimezone=GMT%2B8
     password: 123456
@@ -21,3 +21,8 @@ spring:
     broker-url: tcp://192.168.88.81:61616
     user: admin
     password: admin
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8500/eureka/
