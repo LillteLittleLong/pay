@@ -2,6 +2,7 @@ package com.shangfu.pay.routing.controller;
 
 import com.google.gson.Gson;
 import com.shangfu.pay.routing.service.DownRoutingService;
+import com.shangfu.pay.routing.service.DownRoutingServiceTest;
 import com.shangfu.pay.routing.service.UpRoutingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,8 +18,11 @@ import java.util.Map;
 @RestController
 public class CollpayRoutingController {
 
+    //@Autowired
+    //DownRoutingService downRoutingService;
     @Autowired
-    DownRoutingService downRoutingService;
+    DownRoutingServiceTest downRoutingService;
+
     @Autowired
     UpRoutingService upRoutingService;
 

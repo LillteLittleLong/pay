@@ -109,11 +109,7 @@ public class CollpayServiceImpl implements CollpayService {
                 return gson.toJson(downRoutingMap);
             }
 
-            // 需要从数据库中查询内容
-            collpayInfo.setMch_id("100001000000000001");
-            collpayInfo.setSp_id("1000");
-
-            // 下游如果有可用通道 查看 上游通道路由分发处理
+            // 查看 上游通道路由分发处理
             String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getMch_id(), collpayInfo.getSp_id(), collpayInfo.getTotal_fee());
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 

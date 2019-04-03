@@ -18,15 +18,6 @@ public interface DownMchBusiInfoRepository extends JpaRepository<DownMchBusiInfo
      * @return
      */
     @Query("from DownMchBusiInfo where down_sp_id = ?1 and down_mch_id = ?2 and down_mch_busi_type = ?3")
-    List<DownMchBusiInfo> queryMchPassage(String downSpId, String downMchId, String downMchBusiType);
-
-    /**
-     * 获取该商户所有的通道
-     * @param downMchId
-     * @param downMchBusiType
-     * @return
-     */
-    @Query("from DownMchBusiInfo where down_mch_id = ?1 and down_mch_busi_type = ?2")
-    List<DownMchBusiInfo> queryMchPassage(String downMchId, String downMchBusiType);
+    DownMchBusiInfo queryMchPassage(String downSpId, String downMchId, String downMchBusiType);
 
 }
