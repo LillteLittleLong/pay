@@ -217,7 +217,6 @@ public class CollpayServiceImpl implements CollpayService {
             // down_busi_id
             // up_busi_id
 
-
         } else if ("FAIL".equals(response.getStatus())) {
             collpayInfoRespository.save(collpayInfo);
         }
