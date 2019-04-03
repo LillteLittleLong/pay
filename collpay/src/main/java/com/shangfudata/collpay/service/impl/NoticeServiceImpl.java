@@ -10,7 +10,6 @@ import com.shangfudata.collpay.service.NoticeService;
 import com.shangfudata.collpay.util.RSAUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
@@ -26,7 +25,7 @@ public class NoticeServiceImpl implements NoticeService {
     DownSpInfoRespository downSpInfoRespository;
 
     @Override
-    public void notice(CollpayInfo collpayInfo) /*throws Exception*/{
+    public void notice(CollpayInfo collpayInfo) {
         Gson gson = new Gson();
 
         //拿到订单信息中的下游机构号，再拿密钥
@@ -67,10 +66,11 @@ public class NoticeServiceImpl implements NoticeService {
         // 通知计数
         int count = 0;
         // 通知结果
-        String body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+        String body = HttpUtil.post("http://192.168.88.206:8101/notice", responseInfoJson, 10000);
 
         while(!(body.equals("SUCCESS")) && count != 5){
-            body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+            //body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+            body = HttpUtil.post("http://192.168.88.206:8101/notice", responseInfoJson, 10000);
             count++;
         }
         String notice_status = "true";

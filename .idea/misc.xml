@@ -15,6 +15,7 @@
         <option value="$PROJECT_DIR$/distillpay/pom.xml" />
         <option value="$PROJECT_DIR$/gatewaypay/pom.xml" />
         <option value="$PROJECT_DIR$/routing/pom.xml" />
+        <option value="$PROJECT_DIR$/eureka-server/pom.xml" />
       </list>
     </option>
   </component>

@@ -22,7 +22,7 @@ public class CollpayController {
     @PostMapping(value = "/trading", produces = "application/json;charset=UTF-8")
     @ResponseBody
     public String Collpay(@RequestBody String CollpayInfoToJson) throws Exception{
-
+        System.out.println("接收了请求 > " + CollpayInfoToJson);
         return collpayService.downCollpay(CollpayInfoToJson);
 
     }

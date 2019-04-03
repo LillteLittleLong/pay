@@ -9,6 +9,7 @@
         <module name="collpay" />
         <module name="distillpay" />
         <module name="easypay" />
+        <module name="eureka-server" />
         <module name="gatewaypay" />
         <module name="routing" />
       </profile>
