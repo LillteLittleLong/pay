@@ -47,22 +47,23 @@ public class GatewaypayApplicationTests {
         gatewaypayInfo.setDown_sp_id("1001");
         gatewaypayInfo.setDown_mch_id("101");
         gatewaypayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        gatewaypayInfo.setTotal_fee("300");
-        gatewaypayInfo.setBody("test");
+        gatewaypayInfo.setTotal_fee("8789");
+        gatewaypayInfo.setBody("复合物i发");
         gatewaypayInfo.setNotify_url("http://192.168.88.188:8104/gatewaypay/notice");
-        gatewaypayInfo.setCall_back_url("http://192.168.88.188");
+        gatewaypayInfo.setDown_notify_url("http://192.168.88.188:9001/consumer/notice");
+        gatewaypayInfo.setCall_back_url("http://192.168.88.188:9001/consumer/success");
         gatewaypayInfo.setCard_type("CREDIT");
         gatewaypayInfo.setBank_code("01030000");
-        gatewaypayInfo.setNonce_str("123456789");
+        gatewaypayInfo.setNonce_str("12345678901234567890123456789011");
 
         Gson gson = new Gson();
         String s = gson.toJson(gatewaypayInfo);
         //私钥签名
         gatewaypayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
         String gatewaypayInfoToJson = gson.toJson(gatewaypayInfo);
-        System.out.println("**"+gatewaypayInfoToJson);
+        System.out.println(gatewaypayInfoToJson);
         //String gatewaypay = gatewaypayController.Gatewaypay(gatewaypayInfoToJson);
-       // System.out.println(gatewaypay);
+        // System.out.println(gatewaypay);
     }
 
     @Test

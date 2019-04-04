@@ -41,6 +41,8 @@ public class GatewaypayInfo  {
     private String notify_url;      // 异步通知地址
     @Column(length = 100)
     private String call_back_url;   // 前台回显地址
+    @Column(length = 100)
+    private String down_notify_url; // 下游通知地址
     @Column(length = 32 , nullable = false)
     private String card_type;       // 卡类型
     @Column(length = 32 , nullable = false)

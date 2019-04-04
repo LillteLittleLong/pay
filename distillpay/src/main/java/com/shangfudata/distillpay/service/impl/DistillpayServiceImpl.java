@@ -51,19 +51,19 @@ public class DistillpayServiceImpl implements DistillpayService {
         //创建一个map装返回信息
         Map responseMap = new HashMap();
         //创建一个工具类对象
-        DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
+        //DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
         Gson gson = new Gson();
 
         Map map = gson.fromJson(distillpayInfoToJson, Map.class);
 
         //验空
-        String message = dataValidationUtils.isNullValid(map);
-        if (!(message.equals(""))) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", message);
-            return gson.toJson(responseMap);
-        }
+        //String message = dataValidationUtils.isNullValid(map);
+        //if (!(message.equals(""))) {
+        //    responseMap.put("status", "FAIL");
+        //    responseMap.put("message", message);
+        //    return gson.toJson(responseMap);
+        //}
 
         //取签名
         String sign = (String)map.remove("sign");
@@ -106,7 +106,7 @@ public class DistillpayServiceImpl implements DistillpayService {
             }
 
             // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
-            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(distillpayInfo.getDown_sp_id());
+            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(distillpayInfo.getDown_sp_id() , "distillpay");
 
             // 查看 上游通道路由分发处理
             String upRoutingResponse = eurekaDistillpayClient.upRouting(distillpayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), distillpayInfo.getTotal_fee(), "distillpay");
@@ -148,7 +148,6 @@ public class DistillpayServiceImpl implements DistillpayService {
         responseMap.put("status", "FAIL");
         responseMap.put("message", "签名错误");
         return gson.toJson(responseMap);
-
     }
 
     /**
@@ -164,6 +163,7 @@ public class DistillpayServiceImpl implements DistillpayService {
     @JmsListener(destination = "distillpayinfoNotice.test")
     public void distillpayToUp(String distillpayInfoToJson){
         Gson gson = new Gson();
+        System.out.println("上游接收请求消息 " + distillpayInfoToJson);
 
         Map distillpayInfoToMap = gson.fromJson(distillpayInfoToJson, Map.class);
 
@@ -214,9 +214,7 @@ public class DistillpayServiceImpl implements DistillpayService {
         }else if("FAIL".equals(response.getStatus())){
             distillpayInfoRespository.save(distillpayInfo);
         }
-
     }
-
 
     /**
      * RSA 解密方法
