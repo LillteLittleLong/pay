@@ -56,7 +56,8 @@ public class EasypayInfo implements Serializable {
     private String bank_code;               //银行编码
     @Column(nullable = false)
     private String bank_name;               //开户行名称
-
+    @Column(nullable = false)
+    private String down_notify_url;         //下游通知地址
     @Transient
     private String password;                //验证码
 
@@ -93,5 +94,13 @@ public class EasypayInfo implements Serializable {
      */
     @Column(length = 32)
     private String notice_status;
+
+    /**
+     * 上游通道号 , 下游通道号
+     */
+    @Column
+    private String down_busi_id;
+    @Column
+    private String up_busi_id;
 
 }

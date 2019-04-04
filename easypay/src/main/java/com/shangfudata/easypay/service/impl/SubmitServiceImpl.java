@@ -3,10 +3,10 @@ package com.shangfudata.easypay.service.impl;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-import com.shangfudata.easypay.dao.DistributionInfoRespository;
-import com.shangfudata.easypay.dao.DownMchBusiInfoRespository;
-import com.shangfudata.easypay.dao.EasypayInfoRespository;
-import com.shangfudata.easypay.dao.UpMchBusiInfoRespository;
+import com.shangfudata.easypay.dao.DistributionInfoRepository;
+import com.shangfudata.easypay.dao.DownMchBusiInfoRepository;
+import com.shangfudata.easypay.dao.EasypayInfoRepository;
+import com.shangfudata.easypay.dao.UpMchBusiInfoRepository;
 import com.shangfudata.easypay.entity.DistributionInfo;
 import com.shangfudata.easypay.entity.DownMchBusiInfo;
 import com.shangfudata.easypay.entity.EasypayInfo;
@@ -15,23 +15,20 @@ import com.shangfudata.easypay.service.SubmitService;
 import com.shangfudata.easypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.util.Map;
 
 @Service
 public class SubmitServiceImpl implements SubmitService {
 
-
-
     @Autowired
-    EasypayInfoRespository easypayInfoRespository;
+    EasypayInfoRepository easypayInfoRepository;
     @Autowired
-    UpMchBusiInfoRespository upMchBusiInfoRespository;
+    UpMchBusiInfoRepository upMchBusiInfoRepository;
     @Autowired
-    DownMchBusiInfoRespository downMchBusiInfoRespository;
+    DownMchBusiInfoRepository downMchBusiInfoRepository;
     @Autowired
-    DistributionInfoRespository distributionInfoRespository;
+    DistributionInfoRepository distributionInfoRepository;
 
     String methodUrl = "http://192.168.88.65:8888/gate/epay/epsubmit";
     String signKey = "00000000000000000000000000000000";
@@ -58,19 +55,20 @@ public class SubmitServiceImpl implements SubmitService {
 
 
         if("SUCCESS".equals(status)){
+            //将订单信息表存储数据库
+            easypayInfoRepository.updateTradeState(trade_state,err_code,err_msg,out_trade_no);
+
+
+            EasypayInfo byOutTradeNo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
 
             //清分
-            EasypayInfo e = easypayInfoRespository.findByOutTradeNo(out_trade_no);
-            Distribution(e);
-
-            //将订单信息表存储数据库
-            easypayInfoRespository.updateTradeState(trade_state,err_code,err_msg,out_trade_no);
+            distribution(byOutTradeNo);
         }else if("FAIL".equals(status)){
-            easypayInfoRespository.updateFailTradeState(status,code,message,out_trade_no);
+            easypayInfoRepository.updateFailTradeState(status,code,message,out_trade_no);
         }
 
         /*//向下通知
-        noticeService.ToDown(easypayInfoRespository.findByOutTradeNo(out_trade_no));
+        noticeService.ToDown(easypayInfoRepository.findByOutTradeNo(out_trade_no));
         //noticeService.notice(collpayInfoRespository.findByOutTradeNo(collpayInfo.getOut_trade_no()));*/
 
         return responseInfo;
@@ -79,19 +77,11 @@ public class SubmitServiceImpl implements SubmitService {
     /**
      * 清分方法
      *
-     * @param easypayInfo
      */
-    public void Distribution(EasypayInfo easypayInfo){
-
-        //计算清分,需要拿到{上游商户的手续费率，下游商户的手续费率}
-        String down_mch_id = easypayInfo.getDown_mch_id();
-        String mch_id = easypayInfo.getMch_id();
-
-        //拿到上下游商户id后查询两张商户业务表
-        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRespository.findByDownMchIdAndBusiType(down_mch_id, "easypay");
-        //System.out.println("下游业务信息：："+downMchBusiInfo);
-        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRespository.findByMchIdAndBusiType(mch_id, "easypay");
-        //System.out.println("上游业务信息：："+upMchBusiInfo);
+    public void distribution(EasypayInfo easypayInfo) {
+        //通过路由给的上下游两个商户业务 id 查询数据库 .
+        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(easypayInfo.getDown_busi_id());
+        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(easypayInfo.getUp_busi_id());
 
         //交易金额
         BigDecimal Total_fee = Convert.toBigDecimal(easypayInfo.getTotal_fee());
@@ -106,30 +96,30 @@ public class SubmitServiceImpl implements SubmitService {
         int j = up_commis_charge.multiply(Total_fee).compareTo(up_min_charge);
 
         BigDecimal final_down_charge;
-        if( (-1) == i){
+        if ((-1) == i) {
             final_down_charge = down_min_charge;
-        }else if( (1) == i ){
+        } else if ((1) == i) {
             final_down_charge = down_commis_charge.multiply(Total_fee);
-        }else{
+        } else {
             final_down_charge = down_min_charge;
         }
-        BigDecimal final_up_charge ;
-        if( (-1) == j){
+        BigDecimal final_up_charge;
+        if ((-1) == j) {
             final_up_charge = up_min_charge;
-        }else if( (1) == j ){
+        } else if ((1) == j) {
             final_up_charge = up_commis_charge.multiply(Total_fee);
-        }else{
+        } else {
             final_up_charge = up_min_charge;
         }
 
         //计算利润,先四舍五入小数位
         final_down_charge = final_down_charge.setScale(0, BigDecimal.ROUND_HALF_UP);
-        final_up_charge = final_up_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
-        BigDecimal profit =final_down_charge.subtract(final_up_charge);
+        final_up_charge = final_up_charge.setScale(0, BigDecimal.ROUND_HALF_UP);
+        BigDecimal profit = final_down_charge.subtract(final_up_charge);
 
         DistributionInfo distributionInfo = new DistributionInfo();
         distributionInfo.setOut_trade_no(easypayInfo.getOut_trade_no());
-        distributionInfo.setBusi_type("easypay");
+        distributionInfo.setBusi_type("collpay");
         distributionInfo.setDown_mch_id(easypayInfo.getDown_mch_id());
         distributionInfo.setDown_charge(final_down_charge.toString());
         distributionInfo.setUp_mch_id(easypayInfo.getMch_id());
@@ -137,7 +127,8 @@ public class SubmitServiceImpl implements SubmitService {
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
 
+        System.out.println("清分信息 > " + distributionInfo);
         //存数据库
-        distributionInfoRespository.save(distributionInfo);
+        distributionInfoRepository.save(distributionInfo);
     }
 }

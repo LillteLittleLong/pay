@@ -2,7 +2,7 @@ package com.shangfudata.easypay.service.impl;
 
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-import com.shangfudata.easypay.dao.EasypayInfoRespository;
+import com.shangfudata.easypay.dao.EasypayInfoRepository;
 import com.shangfudata.easypay.entity.EasypayInfo;
 import com.shangfudata.easypay.entity.QueryInfo;
 import com.shangfudata.easypay.service.QueryService;
@@ -22,7 +22,7 @@ public class QueryServiceImpl implements QueryService {
 
 
     @Autowired
-    EasypayInfoRespository easypayInfoRespository;
+    EasypayInfoRepository easypayInfoRespository;
 
 
     /**
@@ -73,10 +73,10 @@ public class QueryServiceImpl implements QueryService {
                     easypayInfoRespository.updateTradeState(trade_state,err_code,err_msg,out_trade_no);
 
                     //String out_trade_no1 = easypayInfo.getOut_trade_no();
-                    //easypayInfoRespository.updateNoticeStatus("true",out_trade_no1);
+                    //easypayInfoRepository.updateNoticeStatus("true",out_trade_no1);
                     //noticeController.notice(out_trade_no);
                     //String notice_status = "true";
-                    //easypayInfoRespository.updateNoticeStatus(notice_status,out_trade_no);
+                    //easypayInfoRepository.updateNoticeStatus(notice_status,out_trade_no);
                 }
                 //}
             }

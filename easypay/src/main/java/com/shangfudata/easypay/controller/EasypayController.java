@@ -20,8 +20,6 @@ public class EasypayController {
     @PostMapping(value = "/trading", produces = "application/json;charset=UTF-8")
     @ResponseBody
     public String Easypay(@RequestBody String EasypayInfoToJson) throws Exception{
-
-
         return easypayService.downEasypay(EasypayInfoToJson);
 
     }

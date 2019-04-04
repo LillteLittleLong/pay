@@ -9,7 +9,6 @@ import com.shangfudata.distillpay.eureka.EurekaDistillpayClient;
 import com.shangfudata.distillpay.jms.DistillpaySenderService;
 import com.shangfudata.distillpay.service.DistillpayService;
 import com.shangfudata.distillpay.util.AesUtils;
-import com.shangfudata.distillpay.util.DataValidationUtils;
 import com.shangfudata.distillpay.util.RSAUtils;
 import com.shangfudata.distillpay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +28,6 @@ public class DistillpayServiceImpl implements DistillpayService {
     String signKey = "36D2F03FA9C94DCD9ADE335AC173CCC3";
     String aesKey = "45FBC053B1913EE83BE7C2801B263F3F";
 
-
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
     @Autowired
@@ -39,7 +37,7 @@ public class DistillpayServiceImpl implements DistillpayService {
     @Autowired
     DownMchBusiInfoRepository downMchBusiInfoRepository;
     @Autowired
-    DistributionInfoRespository distributionInfoRespository;
+    DistributionInfoRepository distributionInfoRepository;
     @Autowired
     DistillpaySenderService distillpaySenderService;
     @Autowired
@@ -299,7 +297,7 @@ public class DistillpayServiceImpl implements DistillpayService {
         distributionInfo.setTrad_amount(Total_fee.toString());
 
         //存数据库
-        distributionInfoRespository.save(distributionInfo);
+        distributionInfoRepository.save(distributionInfo);
     }
 
 }
