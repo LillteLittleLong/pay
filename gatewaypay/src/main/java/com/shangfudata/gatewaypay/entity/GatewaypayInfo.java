@@ -85,4 +85,13 @@ public class GatewaypayInfo  {
      */
     @Column(length = 32)
     private String notice_status;
+
+    /**
+     * 上游通道号 , 下游通道号
+     */
+    @Column
+    private String down_busi_id;
+    @Column
+    private String up_busi_id;
+
 }

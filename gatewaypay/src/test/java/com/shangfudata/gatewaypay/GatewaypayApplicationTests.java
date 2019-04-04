@@ -3,7 +3,7 @@ package com.shangfudata.gatewaypay;
 import com.google.gson.Gson;
 import com.shangfudata.gatewaypay.controller.GatewaypayController;
 import com.shangfudata.gatewaypay.controller.QueryController;
-import com.shangfudata.gatewaypay.dao.DownSpInfoRespository;
+import com.shangfudata.gatewaypay.dao.DownSpInfoRepository;
 import com.shangfudata.gatewaypay.entity.DownSpInfo;
 import com.shangfudata.gatewaypay.entity.GatewaypayInfo;
 import com.shangfudata.gatewaypay.util.RSAUtils;
@@ -12,7 +12,6 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Optional;
@@ -22,18 +21,16 @@ import java.util.Optional;
 public class GatewaypayApplicationTests {
 
     @Autowired
-    DownSpInfoRespository downSpInfoRespository;
-
+    DownSpInfoRepository downSpInfoRepository;
     @Autowired
     GatewaypayController gatewaypayController;
-
     @Autowired
     QueryController queryController;
 
     @Test
     public void contextLoads() throws Exception{
 
-        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
+        Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById("1001");
 
         //获取平台的公钥
         String my_pub_key = downSpInfo.get().getMy_pub_key();
