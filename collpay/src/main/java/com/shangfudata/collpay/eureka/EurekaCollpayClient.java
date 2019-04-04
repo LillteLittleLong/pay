@@ -17,12 +17,11 @@ public interface EurekaCollpayClient {
      * 调用 routing 下游路由分发接口
      */
     @PostMapping("/downRouting")
-    String downRouting(@RequestParam String downMchId, @RequestParam String downSpId, @RequestParam String totalFee);
+    String downRouting(@RequestParam String downMchId, @RequestParam String downSpId, @RequestParam String totalFee , @RequestParam String passage);
 
     /**
      * 调用 routing 上游路由分发接口
      */
     @PostMapping("/upRouting")
-    String upRouting(@RequestParam String mchId, @RequestParam String spId, @RequestParam String totalFee);
-
+    String upRouting(@RequestParam String mchId, @RequestParam String spId, @RequestParam String totalFee , @RequestParam String passage);
 }

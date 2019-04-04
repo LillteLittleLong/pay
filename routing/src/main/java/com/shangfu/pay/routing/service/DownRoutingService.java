@@ -40,7 +40,7 @@ public class DownRoutingService {
 
         // 获取该商户的所有通道
         // 查询某个通道
-        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.queryMchPassage(map.get("down_sp_id"), map.get("down_mch_id"), "collpay");
+        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.queryMchPassage(map.get("down_sp_id"), map.get("down_mch_id"), map.get("passage"));
         System.out.println("通道业务表 downMchBusiInfo >> " + ObjectUtil.toString(downMchBusiInfo));
 
 

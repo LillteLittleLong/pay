@@ -101,7 +101,7 @@ public class CollpayServiceImpl implements CollpayService {
 
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
-            String downRoutingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee());
+            String downRoutingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee() , "collpay");
             Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -110,7 +110,7 @@ public class CollpayServiceImpl implements CollpayService {
             }
 
             // 查看 上游通道路由分发处理
-            String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getMch_id(), collpayInfo.getSp_id(), collpayInfo.getTotal_fee());
+            String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getMch_id(), collpayInfo.getSp_id(), collpayInfo.getTotal_fee() , "collpay");
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 
             // 无可用通道返回响应

@@ -16,8 +16,10 @@ import com.shangfudata.distillpay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
+
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -38,6 +40,8 @@ public class DistillpayServiceImpl implements DistillpayService {
     EurekaDistillpayClient eurekaDistillpayClient;
 
     public String downDistillpay(String distillpayInfoToJson) throws Exception {
+        //创建一个map装返回信息
+        Map responseMap = new HashMap();
         Gson gson = new Gson();
 
         Map map = gson.fromJson(distillpayInfoToJson, Map.class);
@@ -65,27 +69,48 @@ public class DistillpayServiceImpl implements DistillpayService {
 
             // TODO: 2019/4/3  数据验证
 
+            /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
-            String routingString = eurekaDistillpayClient.downRouting(distillpayInfo.getDown_mch_id(), distillpayInfo.getDown_sp_id(), distillpayInfo.getTotal_fee());
+            String downRoutingResponse = eurekaDistillpayClient.downRouting(distillpayInfo.getDown_mch_id(), distillpayInfo.getDown_sp_id(), distillpayInfo.getTotal_fee(), "distillpay");
+            Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
-            Map routingMap = gson.fromJson(routingString, Map.class);
-            if (routingMap.get("status").equals("FAIL")) {
-                // 下游无通道可用响应信息
-                return gson.toJson(routingMap);
+            // 无可用通道返回响应
+            if ("FAIL".equals(downRoutingMap.get("status"))) {
+                return gson.toJson(downRoutingMap);
             }
 
-            // TODO: 2019/4/3 利润计算
+            // 查看 上游通道路由分发处理
+            String upRoutingResponse = eurekaDistillpayClient.upRouting(distillpayInfo.getMch_id(), distillpayInfo.getSp_id(), distillpayInfo.getTotal_fee(), "distillpay");
+            Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
+
+            // 无可用通道返回响应
+            if ("FAIL".equals(upRoutingMap.get("status"))) {
+                return gson.toJson(upRoutingMap);
+            }
+            /* ------------------------ 路由分发 ------------------------------ */
 
             distillpayInfoRespository.save(distillpayInfo);
 
             String dispayInfoToJson = gson.toJson(distillpayInfo);
-            distillpaySenderService.sendMessage("distillpayinfo.test", dispayInfoToJson);
 
-            return "正在处理中/。。。";
+            Map upDistillpayInfoMap = gson.fromJson(dispayInfoToJson, Map.class);
+            upDistillpayInfoMap.put("down_busi_id", downRoutingMap.get("down_busi_id"));
+            upDistillpayInfoMap.put("up_busi_id", upRoutingMap.get("up_busi_id"));
+            String upDistillpayInfoJson = gson.toJson(upDistillpayInfoMap);
+
+            distillpaySenderService.sendMessage("distillpayinfo.test", upDistillpayInfoJson);
+
+            responseMap.put("sp_id", distillpayInfo.getDown_sp_id());
+            responseMap.put("mch_id", distillpayInfo.getDown_mch_id());
+            responseMap.put("status", "SUCCESS");
+            responseMap.put("trade_state", "正在处理中");
+            // 返回响应参数
+            return gson.toJson(responseMap);
         }
-
-        return "信息错误，交易失败";
-
+        //验签失败，直接返回
+        responseMap.put("status", "FAIL");
+        responseMap.put("message", "签名错误");
+        return gson.toJson(responseMap);
     }
 
     /**
@@ -99,7 +124,7 @@ public class DistillpayServiceImpl implements DistillpayService {
      * 5.判断，保存数据库
      */
     @JmsListener(destination = "distillpayinfo.test")
-    public void distillpayToUp(String distillpayInfoToJson){
+    public void distillpayToUp(String distillpayInfoToJson) {
         Gson gson = new Gson();
 
         Map distillpayInfoToMap = gson.fromJson(distillpayInfoToJson, Map.class);
@@ -111,15 +136,6 @@ public class DistillpayServiceImpl implements DistillpayService {
         //将json串转为对象，便于存储数据库
         String s = gson.toJson(distillpayInfoToMap);
         DistillpayInfo distillpayInfo = gson.fromJson(s, DistillpayInfo.class);
-
-        // 上游通道分发处理
-        String routingString = eurekaDistillpayClient.upRouting(distillpayInfo.getMch_id(), distillpayInfo.getSp_id(), distillpayInfo.getTotal_fee());
-
-        Map routingMap = gson.fromJson(routingString, Map.class);
-        if (routingMap.get("status").equals("FAIL")) {
-            // 下游无通道可用响应信息
-            Console.error("上游的请求 > " + routingMap.get("message"));
-        }
 
         // TODO: 2019/4/3 利润计算
 

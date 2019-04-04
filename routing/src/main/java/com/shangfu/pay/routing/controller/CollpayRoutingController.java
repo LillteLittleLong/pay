@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,19 +28,19 @@ public class CollpayRoutingController {
      */
     @PostMapping("/downRouting")
     @ResponseBody
-    public ResponseEntity<String> collpayDownRouting(@RequestParam String downMchId , @RequestParam String downSpId , @RequestParam String totalFee){
+    public ResponseEntity<String> collpayDownRouting(@RequestParam String downMchId, @RequestParam String downSpId, @RequestParam String totalFee, @RequestParam String passage) {
         Gson gson = new Gson();
         System.out.println("进入了 routing 下游接口");
 
-        Map<String , String> map = new HashMap();
-        map.put("down_mch_id" , downMchId);
-        map.put("down_sp_id" , downSpId);
-        map.put("total_fee" , totalFee);
-
+        Map<String, String> map = new HashMap();
+        map.put("down_mch_id", downMchId);
+        map.put("down_sp_id", downSpId);
+        map.put("total_fee", totalFee);
+        map.put("passage" , passage);
         Map routingMap = new HashMap();
         Integer integer = downRoutingService.downRouting(map, routingMap);
 
-        routingMap.put("down_busi_id" , integer);
+        routingMap.put("down_busi_id", integer);
 
         return ResponseEntity.status(HttpStatus.OK).body(gson.toJson(routingMap));
     }
@@ -49,19 +50,19 @@ public class CollpayRoutingController {
      */
     @PostMapping("/upRouting")
     @ResponseBody
-    public ResponseEntity<String> collpayUpRouting(@RequestParam String mchId , @RequestParam String spId , @RequestParam String totalFee){
+    public ResponseEntity<String> collpayUpRouting(@RequestParam String mchId, @RequestParam String spId, @RequestParam String totalFee, @RequestParam String passage) {
         Gson gson = new Gson();
         System.out.println("进入了 routing 上游接口");
 
-        Map<String , String> map = new HashMap();
-        map.put("mch_id" , mchId);
-        map.put("sp_id" , spId);
-        map.put("total_fee" , totalFee);
-
+        Map<String, String> map = new HashMap();
+        map.put("mch_id", mchId);
+        map.put("sp_id", spId);
+        map.put("total_fee", totalFee);
+        map.put("passage" , passage);
         Map routingMap = new HashMap();
         Integer integer = upRoutingService.upRouting(map, routingMap);
 
-        routingMap.put("down_busi_id" , integer);
+        routingMap.put("down_busi_id", integer);
 
         return ResponseEntity.status(HttpStatus.OK).body(gson.toJson(routingMap));
     }
