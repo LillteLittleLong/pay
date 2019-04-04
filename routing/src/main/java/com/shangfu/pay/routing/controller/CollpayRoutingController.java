@@ -17,11 +17,8 @@ import java.util.Map;
 @RestController
 public class CollpayRoutingController {
 
-    //@Autowired
-    //DownRoutingService downRoutingService;
     @Autowired
     DownRoutingService downRoutingService;
-
     @Autowired
     UpRoutingService upRoutingService;
 

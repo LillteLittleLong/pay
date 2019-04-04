@@ -4,8 +4,10 @@ import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.dao.CollpayInfoRespository;
 import com.shangfudata.collpay.dao.DownSpInfoRespository;
+import com.shangfudata.collpay.dao.UpMchInfoRepository;
 import com.shangfudata.collpay.entity.CollpayInfo;
 import com.shangfudata.collpay.entity.DownSpInfo;
+import com.shangfudata.collpay.entity.UpMchInfo;
 import com.shangfudata.collpay.eureka.EurekaCollpayClient;
 import com.shangfudata.collpay.jms.CollpaySenderService;
 import com.shangfudata.collpay.service.CollpayService;
@@ -40,10 +42,8 @@ public class CollpayServiceImpl implements CollpayService {
     NoticeService noticeService;
     @Autowired
     EurekaCollpayClient eurekaCollpayClient;
-
-    String methodUrl = "http://testapi.shangfudata.com/gate/cp/collpay";
-    String signKey = "00000000000000000000000000000000";
-    String aesKey = "77A231F976FF932024B68469EA9823F3";//上游给的密钥
+    @Autowired
+    UpMchInfoRepository upMchInfoRepository;
 
     /**
      * 交易方法
@@ -177,13 +177,16 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfoToMap.remove("down_sp_id");
         collpayInfoToMap.remove("down_mch_id");
         collpayInfoToMap.remove("sign");
+
+        // 查询数据库获取加密解密信息
+        UpMchInfo upMchInfo = upMchInfoRepository.getOne(collpayInfo.getMch_id());
         //对上交易信息进行签名
-        collpayInfoToMap.put("sign", SignUtils.sign(collpayInfoToMap, signKey));
+        collpayInfoToMap.put("sign", SignUtils.sign(collpayInfoToMap, upMchInfo.getSign_key()));
         //AES加密操作
-        upEncoding(collpayInfoToMap, aesKey);
+        upEncoding(collpayInfoToMap, upMchInfo.getSec_key());
 
         //发送请求
-        String responseInfo = HttpUtil.post(methodUrl, collpayInfoToMap, 12000);
+        String responseInfo = HttpUtil.post(collpayInfo.getNotify_url(), collpayInfoToMap, 12000);
         //获取响应信息，并用一个新CollpayInfo对象装下这些响应信息
         CollpayInfo response = gson.fromJson(responseInfo, CollpayInfo.class);
 
@@ -197,14 +200,6 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfo.setErr_msg(response.getErr_msg());
 
         if ("SUCCESS".equals(response.getStatus())) {
-            // TODO: 2019/4/3 清分 , 计算利润
-            // TODO: 2019/4/3 下游业务信息 id  , 上游业务信息 id , 商品订单号
-
-            // TODO: 2019/4/2 计算通道利润
-            // TODO: 2019/4/2 在这里加上计算上游通道利润的代码
-            // TODO: 2019/4/2 总利润 = 下游利润 - 上游利润
-            // TODO: 2019/4/3 将利润存入数据库
-
 
             //将订单信息表存储数据库
             collpayInfoRespository.save(collpayInfo);

@@ -66,6 +66,7 @@ public class UpRoutingService {
         }
 
         List<UpMchBusiInfo> upMchBusiInfos = passageValid(upMchBusiInfo, map);
+
         if (0 == upMchBusiInfos.size()) {
             Console.error("上游没有可用通道 , 无法交易");
             routingMap.put("status", "FAIL");
@@ -148,7 +149,8 @@ public class UpRoutingService {
                 return entrySet.getKey();
             }
         }
-        return 0;
+        // 没有通道返回 -1
+        return -1;
     }
 
 }
