@@ -118,7 +118,14 @@ public class CollpayServiceImpl implements CollpayService {
             }
 
             // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
-            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(collpayInfo.getDown_sp_id());
+            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(collpayInfo.getDown_sp_id(), "collpay");
+
+            // 如果为空返回无通道
+            if (null == upRoutingInfo) {
+                downRoutingMap.put("status", "FAIL");
+                downRoutingMap.put("message", "上游没有可用通道");
+                return gson.toJson(downRoutingMap);
+            }
 
             // 查看 上游通道路由分发处理
             String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), collpayInfo.getTotal_fee(), "collpay");

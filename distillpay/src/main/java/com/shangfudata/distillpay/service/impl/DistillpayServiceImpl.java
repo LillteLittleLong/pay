@@ -106,6 +106,13 @@ public class DistillpayServiceImpl implements DistillpayService {
             // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
             UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(distillpayInfo.getDown_sp_id() , "distillpay");
 
+            // 如果为空返回无通道
+            if (null == upRoutingInfo) {
+                downRoutingMap.put("status", "FAIL");
+                downRoutingMap.put("message", "上游没有可用通道");
+                return gson.toJson(downRoutingMap);
+            }
+
             // 查看 上游通道路由分发处理
             String upRoutingResponse = eurekaDistillpayClient.upRouting(distillpayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), distillpayInfo.getTotal_fee(), "distillpay");
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
