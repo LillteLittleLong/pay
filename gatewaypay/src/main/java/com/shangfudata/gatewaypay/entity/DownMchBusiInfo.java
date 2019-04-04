@@ -1,6 +1,7 @@
 package com.shangfudata.gatewaypay.entity;
 
 import lombok.Data;
+import org.hibernate.annotations.Proxy;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -12,6 +13,7 @@ import java.io.Serializable;
 
 @Data
 @Entity
+@Proxy(lazy = false)
 public class DownMchBusiInfo implements Serializable {
 
     @Id

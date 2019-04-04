@@ -40,7 +40,7 @@ public class QueryServiceImpl implements QueryService {
     /**
      * 向上查询（轮询方法）
      */
-    @Scheduled(cron = "*/60 * * * * ?")
+    @Scheduled(cron = "*/5 * * * * ?")
     public void queryToUp() {
 
         Gson gson = new Gson();
@@ -93,7 +93,7 @@ public class QueryServiceImpl implements QueryService {
                     if ("SUCCESS".equals(status)) {
                         //将订单信息表存储数据库
                         gatewaypayInfoRepository.updateSuccessTradeState(trade_state, err_code, err_msg, out_trade_no);
-
+                        System.out.println("开始清分");
                         //如果交易状态为成功，做清分
                         if ("SUCCESS".equals(trade_state)) {
                             // 网关清分
