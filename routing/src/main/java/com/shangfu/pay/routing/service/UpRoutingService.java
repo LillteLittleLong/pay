@@ -48,21 +48,21 @@ public class UpRoutingService {
         }
 
         // 获得了响应结果
-        String spId = upRoutingInfo.getSp_id();
+        String downSpId = upRoutingInfo.getDown_sp_id();
         String mchId = upRoutingInfo.getMch_id();
         String passage = upRoutingInfo.getPassage();
-        String mchIdValid = upRoutingInfo.getMch_id();
+        String spId = upRoutingInfo.getSp_id();
 
         List<UpMchBusiInfo> upMchBusiInfo;
 
         // 获取该商户的所有通道
-        if (mchIdValid.equals("*")) {
+        if (spId.equals("*")) {
             System.out.println("上游走 * 号通道");
             upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(mchId, passage);
         } else {
             // 查询某个通道
             System.out.println("上游走单一通道");
-            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(spId, mchId, passage);
+            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(downSpId, mchId, passage);
         }
 
         List<UpMchBusiInfo> upMchBusiInfos = passageValid(upMchBusiInfo, map);

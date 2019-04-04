@@ -12,7 +12,7 @@ import java.io.Serializable;
  */
 public interface UpRoutingInfoRepository extends JpaRepository<UpRoutingInfo, Integer>, JpaSpecificationExecutor<UpRoutingInfo>, Serializable {
 
-    @Query("from UpRoutingInfo where mch_id = ?1 and sp_id = ?2")
-    UpRoutingInfo queryOne(String mchId, String spId);
+    @Query("from UpRoutingInfo where down_sp_id = ?1 and mch_id = ?2")
+    UpRoutingInfo queryOne(String downSpId, String mchId);
 
 }

@@ -1,7 +1,6 @@
 package com.shangfu.pay.routing.entity;
 
 import lombok.Data;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -18,10 +17,12 @@ public class UpRoutingInfo {
     @Column
     private String up_routing_id;           // 下游机构号
     @Column
-    private String mch_id;                  // 上游商户号
+    private String down_sp_id;              // 下游机构 id
+    @Column
+    private String mch_id;                  // 商户 id
     @Column
     private String passage;                 // 通道
     @Column
-    private String sp_id;                   // 下游商户 id
+    private String sp_id;                   // 机构 id
 
 }
