@@ -1,6 +1,8 @@
 package com.shangfudata.collpay.entity;
 
 import lombok.Data;
+import org.hibernate.annotations.Proxy;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -12,6 +14,7 @@ import javax.persistence.Id;
 
 @Data
 @Entity
+@Proxy(lazy = false)
 public class DownMchBusiInfo {
 
     /**

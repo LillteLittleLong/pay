@@ -16,6 +16,7 @@ import com.shangfudata.collpay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -48,7 +49,11 @@ public class CollpayServiceImpl implements CollpayService {
     UpMchBusiInfoRepository upMchBusiInfoRepository;
     @Autowired
     DistributionInfoRespository distributionInfoRespository;
+    @Autowired
+    UpRoutingInfoRepository upRoutingInfoRepository;
 
+
+    private String methodUrl = "http://testapi.shangfudata.com/gate/cp/collpay";
 
     /**
      * 交易方法
@@ -62,7 +67,6 @@ public class CollpayServiceImpl implements CollpayService {
         Map responseMap = new HashMap();
         //创建一个工具类对象
         DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
-
         Gson gson = new Gson();
 
         Map map = gson.fromJson(CollpayInfoToJson, Map.class);
@@ -106,7 +110,7 @@ public class CollpayServiceImpl implements CollpayService {
 
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
-            String downRoutingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee() , "collpay");
+            String downRoutingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee(), "collpay");
             System.out.println("下游路由信息 > " + downRoutingResponse);
             Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
@@ -115,8 +119,11 @@ public class CollpayServiceImpl implements CollpayService {
                 return gson.toJson(downRoutingMap);
             }
 
+            // 查询 down_sp_id , 获取 mch_id <> sp_id
+            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(collpayInfo.getDown_sp_id());
+
             // 查看 上游通道路由分发处理
-            String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getDown_sp_id(), "100001000000000001", collpayInfo.getTotal_fee() , "collpay");
+            String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), collpayInfo.getTotal_fee(), "collpay");
             System.out.println("上游路由信息 > " + upRoutingResponse);
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 
@@ -135,6 +142,8 @@ public class CollpayServiceImpl implements CollpayService {
             Map upCollpayInfoMap = gson.fromJson(collpayInfoToJson, Map.class);
             upCollpayInfoMap.put("down_busi_id", downRoutingMap.get("down_busi_id"));
             upCollpayInfoMap.put("up_busi_id", upRoutingMap.get("up_busi_id"));
+            upCollpayInfoMap.put("mch_id" , upRoutingInfo.getMch_id());
+            upCollpayInfoMap.put("sp_id" , upRoutingInfo.getSp_id());
             String upCollpayInfoJson = gson.toJson(upCollpayInfoMap);
 
             collpaySenderService.sendMessage("collpayinfo11.notice", upCollpayInfoJson);
@@ -172,8 +181,8 @@ public class CollpayServiceImpl implements CollpayService {
         Gson gson = new Gson();
         Map collpayInfoToMap = gson.fromJson(collpayInfoToJson, Map.class);
 
-        collpayInfoToMap.put("mch_id" , "100001000000000001");
-        collpayInfoToMap.put("sp_id" , "1000");
+        //collpayInfoToMap.put("sp_id", "1000");
+        //collpayInfoToMap.put("mch_id", "100001000000000001");
 
         // 从 map 中删除并获取两个通道业务 id .
         String down_busi_id = (String) collpayInfoToMap.remove("down_busi_id");
@@ -189,9 +198,7 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfoToMap.remove("sign");
 
         // 查询数据库获取加密解密信息
-        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId("100001000000000001");
-
-        System.out.println("获取下游商户信息 > " + upMchInfo);
+        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(collpayInfo.getMch_id());
 
         //对上交易信息进行签名
         collpayInfoToMap.put("sign", SignUtils.sign(collpayInfoToMap, upMchInfo.getSign_key()));
@@ -199,10 +206,10 @@ public class CollpayServiceImpl implements CollpayService {
         upEncoding(collpayInfoToMap, upMchInfo.getSec_key());
 
         //发送请求
-        String responseInfo = HttpUtil.post(collpayInfo.getNotify_url(), collpayInfoToMap, 12000);
+        String responseInfo = HttpUtil.post(methodUrl, collpayInfoToMap, 12000);
         //获取响应信息，并用一个新CollpayInfo对象装下这些响应信息
         CollpayInfo response = gson.fromJson(responseInfo, CollpayInfo.class);
-        System.out.println("上游响应信息 " + collpayInfo);
+        System.out.println("上游请求信息 " + collpayInfoToMap);
         System.out.println("上游响应信息 " + response);
 
         //将响应信息存储到当前downCollpayInfo及UpCollpayInfo请求交易完整信息中
@@ -215,16 +222,17 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfo.setErr_msg(response.getErr_msg());
 
         if ("SUCCESS".equals(response.getStatus())) {
-            // 清分参数包装
-            Map<String, String> distribution = new HashMap<>();
-            distribution.put("up_busi_id" , up_busi_id);
-            distribution.put("down_busi_id" , down_busi_id);
-            distribution.put("out_trade_no" , collpayInfo.getOut_trade_no());
-            // 清分
-            distribution(distribution);
-
             //将订单信息表存储数据库
             collpayInfoRespository.save(collpayInfo);
+
+            // 清分参数包装
+            Map<String, String> distribution = new HashMap<>();
+            distribution.put("up_busi_id", up_busi_id);
+            distribution.put("down_busi_id", down_busi_id);
+            distribution.put("out_trade_no", collpayInfo.getOut_trade_no());
+            //distribution.put()
+            // 清分
+            distribution(distribution);
         } else if ("FAIL".equals(response.getStatus())) {
             collpayInfoRespository.save(collpayInfo);
         }
@@ -266,16 +274,17 @@ public class CollpayServiceImpl implements CollpayService {
     /**
      * 清分方法
      *
-     * @param collpayInfo
+     * @param collpayInfoMap
      */
-    public void distribution(Map collpayInfo){
+    public void distribution(Map<String, String> collpayInfoMap) {
         //通过路由给的上下游两个商户业务 id 查询数据库 .
-        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne((Integer) collpayInfo.get("down_busi_id"));
-        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne((Integer) collpayInfo.get("up_busi_id"));
+        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(collpayInfoMap.get("down_busi_id"));
+        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(collpayInfoMap.get("up_busi_id"));
 
         // 根据订单号获取订单信息
-        String out_trade_no = (String) collpayInfo.get("out_trade_no");
+        String out_trade_no = collpayInfoMap.get("out_trade_no");
         CollpayInfo byOutTradeNo = collpayInfoRespository.findByOutTradeNo(out_trade_no);
+        System.out.println("订单对象 > " + byOutTradeNo);
 
         //交易金额
         BigDecimal Total_fee = Convert.toBigDecimal(byOutTradeNo.getTotal_fee());
@@ -290,26 +299,26 @@ public class CollpayServiceImpl implements CollpayService {
         int j = up_commis_charge.multiply(Total_fee).compareTo(up_min_charge);
 
         BigDecimal final_down_charge;
-        if( (-1) == i){
+        if ((-1) == i) {
             final_down_charge = down_min_charge;
-        }else if( (1) == i ){
+        } else if ((1) == i) {
             final_down_charge = down_commis_charge.multiply(Total_fee);
-        }else{
+        } else {
             final_down_charge = down_min_charge;
         }
-        BigDecimal final_up_charge ;
-        if( (-1) == j){
+        BigDecimal final_up_charge;
+        if ((-1) == j) {
             final_up_charge = up_min_charge;
-        }else if( (1) == j ){
+        } else if ((1) == j) {
             final_up_charge = up_commis_charge.multiply(Total_fee);
-        }else{
+        } else {
             final_up_charge = up_min_charge;
         }
 
         //计算利润,先四舍五入小数位
-        final_down_charge = final_down_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
-        final_up_charge = final_up_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
-        BigDecimal profit =final_down_charge.subtract(final_up_charge);
+        final_down_charge = final_down_charge.setScale(0, BigDecimal.ROUND_HALF_UP);
+        final_up_charge = final_up_charge.setScale(0, BigDecimal.ROUND_HALF_UP);
+        BigDecimal profit = final_down_charge.subtract(final_up_charge);
 
         DistributionInfo distributionInfo = new DistributionInfo();
         distributionInfo.setOut_trade_no(byOutTradeNo.getOut_trade_no());
@@ -320,7 +329,6 @@ public class CollpayServiceImpl implements CollpayService {
         distributionInfo.setUp_charge(final_up_charge.toString());
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
-
 
         System.out.println("清分内容 > " + distributionInfo);
 

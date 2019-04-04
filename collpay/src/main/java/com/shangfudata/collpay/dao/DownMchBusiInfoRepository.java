@@ -11,7 +11,7 @@ import java.util.List;
  * Created by tinlly to 2019/4/1
  * Package for com.shangfu.pay.service.dao
  */
-public interface DownMchBusiInfoRepository extends JpaRepository<DownMchBusiInfo, Integer> , JpaSpecificationExecutor<DownMchBusiInfo> , Serializable {
+public interface DownMchBusiInfoRepository extends JpaRepository<DownMchBusiInfo, String> , JpaSpecificationExecutor<DownMchBusiInfo> , Serializable {
 
     /**
      * 获取该商户所对应的通道

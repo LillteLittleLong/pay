@@ -18,10 +18,12 @@ public class UpRoutingInfo {
     @Column
     private String up_routing_id;           // 下游机构号
     @Column
+    private String down_sp_id;              // 下游机构号
+    @Column
     private String mch_id;                  // 上游商户号
     @Column
     private String passage;                 // 通道
     @Column
-    private String sp_id;                   // 下游商户 id
+    private String sp_id;                   // 上游机构号
 
 }

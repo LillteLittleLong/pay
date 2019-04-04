@@ -59,12 +59,9 @@ public class QueryServiceImpl implements QueryService {
 
                     //使用一个新的UpCollpayInfo对象，接收响应参数
                     CollpayInfo responseInfo = gson.fromJson(queryResponse, CollpayInfo.class);
-                    //System.out.println(responseInfo);
-                    // System.out.println(responseInfo);
 
                     //如果交易状态发生改变，那就更新。
                     if (!(responseInfo.getTrade_state().equals(collpayInfo.getTrade_state()))) {
-
                         //得到交易状态信息
                         String trade_state = responseInfo.getTrade_state();
                         //System.out.println("交易状态:"+trade_state);
