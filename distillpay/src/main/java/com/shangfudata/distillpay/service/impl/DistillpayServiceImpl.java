@@ -88,7 +88,7 @@ public class DistillpayServiceImpl implements DistillpayService {
             downDecoding(distillpayInfo, rsaPrivateKey);
 
             // 异常处理
-            dataValidationUtils.processMyException(distillpayInfo , responseMap);
+            //dataValidationUtils.processMyException(distillpayInfo , responseMap);
 
             // 异常处理后判断是否需要返回
             if("FAIL".equals(responseMap.get("status"))){
