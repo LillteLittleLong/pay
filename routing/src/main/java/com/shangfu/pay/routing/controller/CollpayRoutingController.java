@@ -28,7 +28,7 @@ public class CollpayRoutingController {
      */
     @PostMapping("/downRouting")
     @ResponseBody
-    public ResponseEntity<String> collpayDownRouting(@RequestParam String downMchId, @RequestParam String downSpId, @RequestParam String totalFee, @RequestParam String passage) {
+    public ResponseEntity<String> collpayDownRouting(String downMchId, String downSpId, String totalFee , String passage) {
         Gson gson = new Gson();
         System.out.println("进入了 routing 下游接口");
 
@@ -40,7 +40,7 @@ public class CollpayRoutingController {
         Map routingMap = new HashMap();
         Integer integer = downRoutingService.downRouting(map, routingMap);
 
-        routingMap.put("down_busi_id", integer);
+        routingMap.put("down_busi_id", integer+"");
 
         return ResponseEntity.status(HttpStatus.OK).body(gson.toJson(routingMap));
     }
@@ -50,19 +50,20 @@ public class CollpayRoutingController {
      */
     @PostMapping("/upRouting")
     @ResponseBody
-    public ResponseEntity<String> collpayUpRouting(@RequestParam String mchId, @RequestParam String spId, @RequestParam String totalFee, @RequestParam String passage) {
+    public ResponseEntity<String> collpayUpRouting(String downSpId, String mchId, String totalFee , String passage) {
         Gson gson = new Gson();
         System.out.println("进入了 routing 上游接口");
 
         Map<String, String> map = new HashMap();
+        map.put("down_sp_id", downSpId);
         map.put("mch_id", mchId);
-        map.put("sp_id", spId);
         map.put("total_fee", totalFee);
-        map.put("passage" , passage);
+        map.put("passage", passage);
+
         Map routingMap = new HashMap();
         Integer integer = upRoutingService.upRouting(map, routingMap);
 
-        routingMap.put("down_busi_id", integer);
+        routingMap.put("up_busi_id", integer+"");
 
         return ResponseEntity.status(HttpStatus.OK).body(gson.toJson(routingMap));
     }

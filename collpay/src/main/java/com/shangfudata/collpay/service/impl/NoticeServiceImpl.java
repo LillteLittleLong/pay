@@ -66,11 +66,11 @@ public class NoticeServiceImpl implements NoticeService {
         // 通知计数
         int count = 0;
         // 通知结果
-        String body = HttpUtil.post("http://192.168.88.206:8101/notice", responseInfoJson, 10000);
+        String body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
 
         while(!(body.equals("SUCCESS")) && count != 5){
             //body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
-            body = HttpUtil.post("http://192.168.88.206:8101/notice", responseInfoJson, 10000);
+            body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
             count++;
         }
         String notice_status = "true";

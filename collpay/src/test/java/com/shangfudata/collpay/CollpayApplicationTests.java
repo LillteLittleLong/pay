@@ -104,7 +104,8 @@ public class CollpayApplicationTests {
         collpayInfo.setBank_mobile( "15563637881");
         collpayInfo.setCvv2("123");
         collpayInfo.setCard_valid_date("0318");
-        collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
+        //collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
+        collpayInfo.setNotify_url("http://192.168.88.206:8101/notice");
         collpayInfo.setNonce_str("12345678901234567890123456789011");
 
         //公钥加密

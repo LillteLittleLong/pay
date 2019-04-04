@@ -3,6 +3,7 @@ package com.shangfudata.collpay.dao;
 import com.shangfudata.collpay.entity.UpMchInfo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * Created by tinlly to 2019/4/4
@@ -10,4 +11,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
  */
 public interface UpMchInfoRepository extends JpaRepository<UpMchInfo, String> , JpaSpecificationExecutor<UpMchInfo> {
 
+    @Query("from UpMchInfo where mch_id = ?1")
+    UpMchInfo queryByMchId(String mchId);
 }

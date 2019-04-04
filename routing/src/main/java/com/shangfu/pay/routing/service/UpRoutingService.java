@@ -38,19 +38,23 @@ public class UpRoutingService {
      * @return 返回可用通道 id
      */
     public Integer upRouting(Map<String, String> map, Map routingMap) {
-        String mch_id = map.get("mch_id");
-        String sp_id = map.get("sp_id");
+        System.out.println("请求参数 >> " + ObjectUtil.toString(map));
 
-        UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryOne(mch_id, sp_id);
+        String down_sp_id = map.get("down_sp_id");
+        String mch_id = map.get("mch_id");
+        String passage = map.get("passage");
+        UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryOne(down_sp_id, mch_id , passage);
         if (null == upRoutingInfo) {
             Console.error("上游没有可用通道 , 无法交易");
-            return null;
+            routingMap.put("status", "FAIL");
+            routingMap.put("message", "没有可用通道 , 无法交易");
+            return -1;
         }
 
         // 获得了响应结果
-        String downSpId = upRoutingInfo.getDown_sp_id();
-        String mchId = upRoutingInfo.getMch_id();
-        String passage = upRoutingInfo.getPassage();
+        //String downSpId = upRoutingInfo.getDown_sp_id();
+        //String mchId = upRoutingInfo.getMch_id();
+        //String passage = upRoutingInfo.getPassage();
         String spId = upRoutingInfo.getSp_id();
 
         List<UpMchBusiInfo> upMchBusiInfo;
@@ -58,11 +62,11 @@ public class UpRoutingService {
         // 获取该商户的所有通道
         if (spId.equals("*")) {
             System.out.println("上游走 * 号通道");
-            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(mchId, passage);
+            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(mch_id, passage);
         } else {
             // 查询某个通道
             System.out.println("上游走单一通道");
-            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(downSpId, mchId, passage);
+            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(spId, mch_id, passage);
         }
 
         List<UpMchBusiInfo> upMchBusiInfos = passageValid(upMchBusiInfo, map);
@@ -71,6 +75,7 @@ public class UpRoutingService {
             Console.error("上游没有可用通道 , 无法交易");
             routingMap.put("status", "FAIL");
             routingMap.put("message", "没有可用通道 , 无法交易");
+            return -1;
         } else if (1 < upMchBusiInfos.size()) { // 如果有多个通道 , 返回利润最高的通道
             return passageChoose(upMchBusiInfos, map);
         }
