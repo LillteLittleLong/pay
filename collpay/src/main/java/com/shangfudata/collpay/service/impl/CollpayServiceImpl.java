@@ -1,13 +1,12 @@
 package com.shangfudata.collpay.service.impl;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.dao.CollpayInfoRespository;
 import com.shangfudata.collpay.dao.DownSpInfoRespository;
 import com.shangfudata.collpay.dao.UpMchInfoRepository;
-import com.shangfudata.collpay.entity.CollpayInfo;
-import com.shangfudata.collpay.entity.DownSpInfo;
-import com.shangfudata.collpay.entity.UpMchInfo;
+import com.shangfudata.collpay.entity.*;
 import com.shangfudata.collpay.eureka.EurekaCollpayClient;
 import com.shangfudata.collpay.jms.CollpaySenderService;
 import com.shangfudata.collpay.service.CollpayService;
@@ -19,6 +18,8 @@ import com.shangfudata.collpay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
@@ -243,6 +244,68 @@ public class CollpayServiceImpl implements CollpayService {
         map.replace("cvv2", AesUtils.aesEn((String) map.get("cvv2"), aesKey));
         map.replace("card_valid_date", AesUtils.aesEn((String) map.get("card_valid_date"), aesKey));
         map.replace("bank_mobile", AesUtils.aesEn((String) map.get("bank_mobile"), aesKey));
+    }
+
+    /**
+     * 清分方法
+     *
+     * @param collpayInfo
+     */
+    public void Distribution(CollpayInfo collpayInfo){
+        //计算清分,需要拿到{上游商户的手续费率，下游商户的手续费率}
+        String down_mch_id = collpayInfo.getDown_mch_id();
+        String mch_id = collpayInfo.getMch_id();
+
+        //拿到上下游商户id后查询两张商户业务表
+        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRespository.findByDownMchIdAndBusiType(down_mch_id, "collpay");
+        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRespository.findByMchIdAndBusiType(mch_id, "collpay");
+
+        //交易金额
+        BigDecimal Total_fee = Convert.toBigDecimal(collpayInfo.getTotal_fee());
+        //获取上下游商户最低手续费及相应手续费率
+        BigDecimal down_commis_charge = Convert.toBigDecimal(downMchBusiInfo.getCommis_charge());
+        BigDecimal down_min_charge = Convert.toBigDecimal(downMchBusiInfo.getMin_charge());
+        BigDecimal up_commis_charge = Convert.toBigDecimal(upMchBusiInfo.getCommis_charge());
+        BigDecimal up_min_charge = Convert.toBigDecimal(upMchBusiInfo.getMin_charge());
+
+        //定义上下游最终手续费
+        int i = down_commis_charge.multiply(Total_fee).compareTo(down_min_charge);
+        int j = up_commis_charge.multiply(Total_fee).compareTo(up_min_charge);
+
+        BigDecimal final_down_charge;
+        if( (-1) == i){
+            final_down_charge = down_min_charge;
+        }else if( (1) == i ){
+            final_down_charge = down_commis_charge.multiply(Total_fee);
+        }else{
+            final_down_charge = down_min_charge;
+        }
+        BigDecimal final_up_charge ;
+        if( (-1) == j){
+            final_up_charge = up_min_charge;
+        }else if( (1) == j ){
+            final_up_charge = up_commis_charge.multiply(Total_fee);
+        }else{
+            final_up_charge = up_min_charge;
+        }
+
+        //计算利润,先四舍五入小数位
+        final_down_charge = final_down_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
+        final_up_charge = final_up_charge.setScale(0,BigDecimal.ROUND_HALF_UP);
+        BigDecimal profit =final_down_charge.subtract(final_up_charge);
+
+        DistributionInfo distributionInfo = new DistributionInfo();
+        distributionInfo.setOut_trade_no(collpayInfo.getOut_trade_no());
+        distributionInfo.setBusi_type("collpay");
+        distributionInfo.setDown_mch_id(collpayInfo.getDown_mch_id());
+        distributionInfo.setDown_charge(final_down_charge.toString());
+        distributionInfo.setUp_mch_id(collpayInfo.getMch_id());
+        distributionInfo.setUp_charge(final_up_charge.toString());
+        distributionInfo.setProfit(profit.toString());
+        distributionInfo.setTrad_amount(Total_fee.toString());
+
+        //存数据库
+        distributionInfoRespository.save(distributionInfo);
     }
 
 }
