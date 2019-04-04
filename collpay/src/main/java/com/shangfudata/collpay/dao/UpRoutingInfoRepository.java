@@ -1,6 +1,5 @@
 package com.shangfudata.collpay.dao;
 
-import com.shangfudata.collpay.entity.DownRoutingInfo;
 import com.shangfudata.collpay.entity.UpRoutingInfo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

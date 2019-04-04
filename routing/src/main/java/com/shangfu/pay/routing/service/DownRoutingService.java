@@ -5,9 +5,7 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
 import com.shangfu.pay.routing.dao.DownMchBusiInfoRepository;
-import com.shangfu.pay.routing.dao.DownRoutingInfoRepository;
 import com.shangfu.pay.routing.entity.DownMchBusiInfo;
-import com.shangfu.pay.routing.entity.DownRoutingInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
