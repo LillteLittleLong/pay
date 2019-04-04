@@ -19,6 +19,7 @@ import java.util.Map;
 @Service
 public class QueryServiceImpl implements QueryService {
 
+    private String methodUrl = "http://testapi.shangfudata.com/gate/cp/collpay";
     String signKey = "00000000000000000000000000000000";
 
     @Autowired
@@ -55,7 +56,7 @@ public class QueryServiceImpl implements QueryService {
                     queryMap.put("sign",SignUtils.sign(queryMap, signKey));
 
                     //发送查询请求，得到响应信息
-                    String queryResponse = HttpUtil.post(collpayInfo.getNotify_url(), queryMap, 6000);
+                    String queryResponse = HttpUtil.post(methodUrl, queryMap, 6000);
 
                     //使用一个新的UpCollpayInfo对象，接收响应参数
                     CollpayInfo responseInfo = gson.fromJson(queryResponse, CollpayInfo.class);
