@@ -4,6 +4,7 @@ package com.shangfudata.distillpay.util;
 
 import com.shangfudata.distillpay.entity.DistillpayInfo;
 import com.shangfudata.distillpay.exception.MyException;
+import com.shangfudata.distillpay.util.RegexUtils;
 
 import java.util.Map;
 
@@ -77,7 +78,7 @@ public class DataValidationUtils {
         switch (idType) {
             case MyException.IDType.ID_CARD:
                 // 证件验证
-                if (!(RegexUtils.isIDCard18(idNo))) {
+                if (!(com.shangfudata.distillpay.util.RegexUtils.isIDCard18(idNo))) {
                     System.out.println("身份证验证错误");
                     // 不为银行卡号
                     throw new MyException.IDTypeLengthException();
@@ -95,7 +96,7 @@ public class DataValidationUtils {
      */
     public DataValidationUtils cardHolderNameValid(String cardHolderName) throws MyException.CardNameException {
         // 持卡人姓名长度小于 2 并且不为中文时抛出异常
-        if (cardHolderName.length() < 2 || !RegexUtils.isZh(cardHolderName)) {
+        if (cardHolderName.length() < 2 || !com.shangfudata.distillpay.util.RegexUtils.isZh(cardHolderName)) {
             // 持卡人姓名错误
             throw new MyException.CardNameException();
         }
@@ -108,7 +109,7 @@ public class DataValidationUtils {
      * @return
      */
     public DataValidationUtils bankCardValid(String cardNo) throws MyException.BankCardIDException {
-        if (!(RegexUtils.isBankCardNo(cardNo))) {
+        if (!(com.shangfudata.distillpay.util.RegexUtils.isBankCardNo(cardNo))) {
             throw new MyException.BankCardIDException();
         }
         return this.dataValidationUtils;

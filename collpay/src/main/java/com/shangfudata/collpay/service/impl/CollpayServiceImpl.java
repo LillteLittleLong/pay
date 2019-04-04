@@ -111,7 +111,6 @@ public class CollpayServiceImpl implements CollpayService {
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
             String downRoutingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee(), "collpay");
-            System.out.println("下游路由信息 > " + downRoutingResponse);
             Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -119,12 +118,11 @@ public class CollpayServiceImpl implements CollpayService {
                 return gson.toJson(downRoutingMap);
             }
 
-            // 查询 down_sp_id , 获取 mch_id <> sp_id
+            // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
             UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(collpayInfo.getDown_sp_id());
 
             // 查看 上游通道路由分发处理
             String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), collpayInfo.getTotal_fee(), "collpay");
-            System.out.println("上游路由信息 > " + upRoutingResponse);
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -146,7 +144,7 @@ public class CollpayServiceImpl implements CollpayService {
             upCollpayInfoMap.put("sp_id" , upRoutingInfo.getSp_id());
             String upCollpayInfoJson = gson.toJson(upCollpayInfoMap);
 
-            collpaySenderService.sendMessage("collpayinfo11.notice", upCollpayInfoJson);
+            collpaySenderService.sendMessage("collpayinfo.notice", upCollpayInfoJson);
 
             // 封装响应数据
             responseMap.put("sp_id", collpayInfo.getDown_sp_id());
@@ -174,15 +172,10 @@ public class CollpayServiceImpl implements CollpayService {
      *
      * @param collpayInfoToJson
      */
-    @JmsListener(destination = "collpayinfo11.notice")
+    @JmsListener(destination = "collpayinfo.notice")
     public void collpayToUp(String collpayInfoToJson) {
-        System.out.println("队列中拿到 > " + collpayInfoToJson);
-
         Gson gson = new Gson();
         Map collpayInfoToMap = gson.fromJson(collpayInfoToJson, Map.class);
-
-        //collpayInfoToMap.put("sp_id", "1000");
-        //collpayInfoToMap.put("mch_id", "100001000000000001");
 
         // 从 map 中删除并获取两个通道业务 id .
         String down_busi_id = (String) collpayInfoToMap.remove("down_busi_id");
@@ -209,8 +202,6 @@ public class CollpayServiceImpl implements CollpayService {
         String responseInfo = HttpUtil.post(methodUrl, collpayInfoToMap, 12000);
         //获取响应信息，并用一个新CollpayInfo对象装下这些响应信息
         CollpayInfo response = gson.fromJson(responseInfo, CollpayInfo.class);
-        System.out.println("上游请求信息 " + collpayInfoToMap);
-        System.out.println("上游响应信息 " + response);
 
         //将响应信息存储到当前downCollpayInfo及UpCollpayInfo请求交易完整信息中
         collpayInfo.setTrade_state(response.getTrade_state());
@@ -226,13 +217,12 @@ public class CollpayServiceImpl implements CollpayService {
             collpayInfoRespository.save(collpayInfo);
 
             // 清分参数包装
-            Map<String, String> distribution = new HashMap<>();
-            distribution.put("up_busi_id", up_busi_id);
-            distribution.put("down_busi_id", down_busi_id);
-            distribution.put("out_trade_no", collpayInfo.getOut_trade_no());
-            //distribution.put()
+            Map<String, String> distributionMap = new HashMap<>();
+            distributionMap.put("up_busi_id", up_busi_id);
+            distributionMap.put("down_busi_id", down_busi_id);
+            distributionMap.put("out_trade_no", collpayInfo.getOut_trade_no());
             // 清分
-            distribution(distribution);
+            distribution(distributionMap);
         } else if ("FAIL".equals(response.getStatus())) {
             collpayInfoRespository.save(collpayInfo);
         }
@@ -284,7 +274,6 @@ public class CollpayServiceImpl implements CollpayService {
         // 根据订单号获取订单信息
         String out_trade_no = collpayInfoMap.get("out_trade_no");
         CollpayInfo byOutTradeNo = collpayInfoRespository.findByOutTradeNo(out_trade_no);
-        System.out.println("订单对象 > " + byOutTradeNo);
 
         //交易金额
         BigDecimal Total_fee = Convert.toBigDecimal(byOutTradeNo.getTotal_fee());
@@ -329,8 +318,6 @@ public class CollpayServiceImpl implements CollpayService {
         distributionInfo.setUp_charge(final_up_charge.toString());
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
-
-        System.out.println("清分内容 > " + distributionInfo);
 
         //存数据库
         distributionInfoRespository.save(distributionInfo);

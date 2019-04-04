@@ -17,12 +17,11 @@ public interface EurekaDistillpayClient {
      * 调用 routing 下游路由分发接口
      */
     @PostMapping("/downRouting")
-    String downRouting(@RequestParam String downMchId, @RequestParam String downSpId, @RequestParam String totalFee , @RequestParam String passage);
+    String downRouting(@RequestParam(value = "downMchId") String downMchId, @RequestParam(value = "downSpId") String downSpId, @RequestParam(value = "totalFee") String totalFee , @RequestParam(value = "passage") String passage);
 
     /**
      * 调用 routing 上游路由分发接口
      */
     @PostMapping("/upRouting")
-    String upRouting(@RequestParam String mchId, @RequestParam String spId, @RequestParam String totalFee , @RequestParam String passage);
-
+    String upRouting(@RequestParam(value = "downSpId") String downSpId, @RequestParam(value = "mchId") String mchId, @RequestParam(value = "totalFee") String totalFee , @RequestParam(value = "passage") String passage);
 }
