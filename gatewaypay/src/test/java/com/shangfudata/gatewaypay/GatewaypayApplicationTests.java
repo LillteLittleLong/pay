@@ -29,7 +29,6 @@ public class GatewaypayApplicationTests {
 
     @Test
     public void contextLoads() throws Exception{
-
         Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById("1001");
 
         //获取平台的公钥

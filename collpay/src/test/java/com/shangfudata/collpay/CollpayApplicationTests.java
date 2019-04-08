@@ -1,5 +1,10 @@
 package com.shangfudata.collpay;
 
+import cn.hutool.core.lang.Console;
+import cn.hutool.poi.excel.ExcelReader;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
+import cn.hutool.poi.excel.sax.handler.RowHandler;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.controller.CollpayController;
 import com.shangfudata.collpay.controller.QueryController;
@@ -13,11 +18,11 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
+
+import java.io.File;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -33,7 +38,7 @@ public class CollpayApplicationTests {
     DownSpInfoRespository downSpInfoRespository;
 
     //@Test
-    public void testCollpay() throws Exception{
+    public void testCollpay() throws Exception {
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
 
         //获取公钥
@@ -64,19 +69,19 @@ public class CollpayApplicationTests {
 
         reqMap.put("card_name", RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
         reqMap.put("card_no", RSAUtils.publicKeyEncrypt(reqMap.get("card_no"), rsaPublicKey));
-        reqMap.put("id_no",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-        reqMap.put("bank_mobile",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-        reqMap.put("cvv2",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
-        reqMap.put("card_valid_date",RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
+        reqMap.put("id_no", RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
+        reqMap.put("bank_mobile", RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
+        reqMap.put("cvv2", RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
+        reqMap.put("card_valid_date", RSAUtils.publicKeyEncrypt(reqMap.get("card_name"), rsaPublicKey));
 
         Gson gson = new Gson();
         String s = gson.toJson(reqMap);
 
-        reqMap.put("sign",RSAUtils.sign(s,rsaPrivateKey));
+        reqMap.put("sign", RSAUtils.sign(s, rsaPrivateKey));
     }
 
     @Test
-    public void contextLoads() throws Exception{
+    public void contextLoads() throws Exception {
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
 
         //获取公钥
@@ -95,11 +100,11 @@ public class CollpayApplicationTests {
         collpayInfo.setBody("午饭晚饭呢");
         collpayInfo.setTotal_fee("100999");
         collpayInfo.setCard_type("CREDIT");
-        collpayInfo.setCard_name( "嘿嘿嘿");
+        collpayInfo.setCard_name("嘿嘿嘿");
         collpayInfo.setCard_no("6217992900013005868");
         collpayInfo.setId_type("ID_CARD");
         collpayInfo.setId_no("342101196608282018");
-        collpayInfo.setBank_mobile( "15563637881");
+        collpayInfo.setBank_mobile("15563637881");
         collpayInfo.setCvv2("123");
         collpayInfo.setCard_valid_date("0318");
         //collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
@@ -118,19 +123,18 @@ public class CollpayApplicationTests {
         String s = gson.toJson(collpayInfo);
 
         //私钥签名
-        collpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+        collpayInfo.setSign(RSAUtils.sign(s, rsaPrivateKey));
         //String sign = collpayInfo.getSign();
         //System.out.println("签名信息"+sign);
 
         String collpayInfoToJson = gson.toJson(collpayInfo);
-        System.out.println("签名信息"+collpayInfoToJson);
+        System.out.println("签名信息" + collpayInfoToJson);
         //String collpay = collpayController.Collpay(collpayInfoToJson);
         //System.out.println(collpay);
     }
 
-
     //@Test
-    public void testQuery(){
+    public void testQuery() {
         CollpayInfo collpayInfo = new CollpayInfo();
         collpayInfo.setOut_trade_no("1553148078245");
         Gson gson = new Gson();
@@ -139,4 +143,41 @@ public class CollpayApplicationTests {
         System.out.println(query);
     }
 
+    /**
+     * Excel读取内容
+     * 两种方式读取 Excel 内容
+     */
+    @Test
+    public void readerExcel() {
+        // SAX 方式读取 Excel
+        //ExcelUtil.readBySax(new File("C:\\Users\\shangfu222\\Desktop\\JavaReadExcel.xlsx"), 0, (i, i1, list) -> {
+        //    Console.log("[{}] [{}] {}", i, i1, list);
+        //});
+
+        // 常规 方式读取 Excel
+        // Excel 表格的内容
+        ExcelReader reader = ExcelUtil.getReader(new File("C:\\Users\\shangfu222\\Desktop\\JavaReadExcel.xlsx"));
+        List<Map<String, Object>> maps = reader.readAll();
+        System.out.println(maps);
+    }
+
+    /**
+     * Excel 写入内容
+     * 向 Excel 文件中写入文件
+     */
+    @Test
+    public void writerExcel(){
+        // 可以写入 Iterable 类型下的内容
+        ExcelWriter writer = ExcelUtil.getWriter(new File("C:\\Users\\shangfu222\\Desktop\\JavaWriteExcel.xlsx"));
+        List<String> list = new ArrayList();
+        list.add("AA");
+        list.add("BB");
+        list.add("CC");
+        list.add("DD");
+        list.add("EE");
+        list.add("FF");
+        list.add("GG");
+        writer.writeRow(list);
+        writer.flush();
+    }
 }

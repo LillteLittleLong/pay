@@ -37,5 +37,8 @@ public class UpMchBusiInfo {
     private String max_amount;      // 最大交易限额
     @Column
     private String sp_id;           // 商户所属通道id
+    @Column
+    private String passage_level;   // 商户通道等级
+
 
 }

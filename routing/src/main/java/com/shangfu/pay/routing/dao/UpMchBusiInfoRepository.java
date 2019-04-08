@@ -17,8 +17,8 @@ public interface UpMchBusiInfoRepository extends JpaRepository<UpMchBusiInfo, In
      * 获取该商户所对应的通道
      * @return
      */
-    @Query("from UpMchBusiInfo where sp_id = ?1 and mch_id = ?2 and mch_busi_type = ?3")
-    List<UpMchBusiInfo> queryMchPassage(String downSpId, String downMchId, String downMchBusiType);
+    @Query("from UpMchBusiInfo where passage_level = ?1 and mch_id = ?2 and mch_busi_type = ?3")
+    List<UpMchBusiInfo> queryMchPassage(String passageLevel, String downMchId, String downMchBusiType);
 
     /**
      * 获取该商户所有的通道

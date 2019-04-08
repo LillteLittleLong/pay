@@ -16,6 +16,7 @@ import com.shangfudata.collpay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -26,7 +27,6 @@ import java.util.Optional;
 /**
  * 交易接口
  */
-
 @Service
 public class CollpayServiceImpl implements CollpayService {
 
@@ -145,8 +145,8 @@ public class CollpayServiceImpl implements CollpayService {
             Map upCollpayInfoMap = gson.fromJson(collpayInfoToJson, Map.class);
             upCollpayInfoMap.put("down_busi_id", downRoutingMap.get("down_busi_id"));
             upCollpayInfoMap.put("up_busi_id", upRoutingMap.get("up_busi_id"));
-            upCollpayInfoMap.put("mch_id" , upRoutingInfo.getMch_id());
-            upCollpayInfoMap.put("sp_id" , upRoutingInfo.getSp_id());
+            upCollpayInfoMap.put("mch_id", upRoutingInfo.getMch_id());
+            upCollpayInfoMap.put("sp_id", upRoutingInfo.getSp_id());
             String upCollpayInfoJson = gson.toJson(upCollpayInfoMap);
 
             collpaySenderService.sendMessage("collpayinfo.notice", upCollpayInfoJson);

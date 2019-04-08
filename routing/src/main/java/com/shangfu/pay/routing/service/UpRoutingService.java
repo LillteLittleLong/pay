@@ -6,7 +6,6 @@ import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
 import com.shangfu.pay.routing.dao.UpMchBusiInfoRepository;
 import com.shangfu.pay.routing.dao.UpRoutingInfoRepository;
-import com.shangfu.pay.routing.entity.DownMchBusiInfo;
 import com.shangfu.pay.routing.entity.UpMchBusiInfo;
 import com.shangfu.pay.routing.entity.UpRoutingInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * Created by tinlly to 2019/4/2
@@ -43,7 +43,7 @@ public class UpRoutingService {
         String down_sp_id = map.get("down_sp_id");
         String mch_id = map.get("mch_id");
         String passage = map.get("passage");
-        UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryOne(down_sp_id, mch_id , passage);
+        UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryOne(down_sp_id, mch_id, passage);
         if (null == upRoutingInfo) {
             Console.error("上游没有可用通道 , 无法交易");
             routingMap.put("status", "FAIL");
@@ -52,17 +52,16 @@ public class UpRoutingService {
         }
 
         // 获得了响应结果
-        //String downSpId = upRoutingInfo.getDown_sp_id();
-        //String mchId = upRoutingInfo.getMch_id();
-        //String passage = upRoutingInfo.getPassage();
         String spId = upRoutingInfo.getSp_id();
 
         List<UpMchBusiInfo> upMchBusiInfo;
 
-        // 获取该商户的所有通道
         if (spId.equals("*")) {
             System.out.println("上游走 * 号通道");
             upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(mch_id, passage);
+        } else if (Pattern.matches("[A-Z]" , spId)) {
+            System.out.println("上游走 " + spId + " 等级通道");
+            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(spId, mch_id, passage);
         } else {
             // 查询某个通道
             System.out.println("上游走单一通道");
@@ -77,7 +76,7 @@ public class UpRoutingService {
             routingMap.put("message", "没有可用通道 , 无法交易");
             return -1;
         } else if (1 < upMchBusiInfos.size()) { // 如果有多个通道 , 返回利润最高的通道
-            return passageChoose(upMchBusiInfos, map);
+            return passageChooseOne(upMchBusiInfos, map);
         }
 
         return upMchBusiInfos.get(0).getUp_busi_id();
@@ -128,7 +127,7 @@ public class UpRoutingService {
         return mchBusiInfos;
     }
 
-    private Integer passageChoose(List<UpMchBusiInfo> upMchBusiInfos, Map<String, String> map) {
+    private Integer passageChooseOne(List<UpMchBusiInfo> upMchBusiInfos, Map<String, String> map) {
         Map<Integer, Integer> mapProfit = new HashMap<>();
 
         // 循环获取内容
@@ -143,6 +142,28 @@ public class UpRoutingService {
             BigDecimal result = totalFee.multiply(commisCharge).add(minCharge);
             // 将计算完成的 利润 和通道 id 号放入 map 中
             mapProfit.put(upMchBusiInfo.getUp_busi_id(), result.intValue());
+        }
+        System.out.println("利润计算完成" + ObjectUtil.toString(mapProfit));
+        // 得到最低利润
+        Integer max = Collections.min(mapProfit.values());
+
+        // 根据利润得到 通道 id , 并返回
+        for (Map.Entry<Integer, Integer> entrySet : mapProfit.entrySet()) {
+            if (entrySet.getValue().equals(max)) {
+                return entrySet.getKey();
+            }
+        }
+        // 没有通道返回 -1
+        return -1;
+    }
+
+    private Integer passageChooseTwo(List<UpMchBusiInfo> upMchBusiInfos, Map<String, String> map) {
+        // 根据通道选择 A
+        Map<Integer, Integer> mapProfit = new HashMap<>();
+
+        // 计算等级
+        for (UpMchBusiInfo upMchBusiInfo : upMchBusiInfos) {
+
         }
         System.out.println("利润计算完成" + ObjectUtil.toString(mapProfit));
         // 得到最低利润
