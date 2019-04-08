@@ -7,13 +7,11 @@ import com.shangfudata.collpay.dao.DownSpInfoRespository;
 import com.shangfudata.collpay.entity.CollpayInfo;
 import com.shangfudata.collpay.entity.DownSpInfo;
 import com.shangfudata.collpay.util.RSAUtils;
-import com.shangfudata.collpay.util.SignUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
@@ -35,7 +33,6 @@ public class CollpayApplicationTests {
 
     //@Test
     public void testCollpay() throws Exception{
-
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
 
         //获取公钥
@@ -116,7 +113,6 @@ public class CollpayApplicationTests {
         collpayInfo.setCvv2(RSAUtils.publicKeyEncrypt(collpayInfo.getCvv2(), rsaPublicKey));
         collpayInfo.setCard_valid_date(RSAUtils.publicKeyEncrypt(collpayInfo.getCard_valid_date(), rsaPublicKey));
 
-
         Gson gson = new Gson();
         String s = gson.toJson(collpayInfo);
 
@@ -131,15 +127,14 @@ public class CollpayApplicationTests {
         //System.out.println(collpay);
     }
 
-
     //@Test
-    public void testQuery(){
-        CollpayInfo collpayInfo = new CollpayInfo();
-        collpayInfo.setOut_trade_no("1553148078245");
-        Gson gson = new Gson();
-        String s = gson.toJson(collpayInfo);
-        String query = queryController.Query(s);
-        System.out.println(query);
-    }
+    //public void testQuery(){
+    //    CollpayInfo collpayInfo = new CollpayInfo();
+    //    collpayInfo.setOut_trade_no("1553148078245");
+    //    Gson gson = new Gson();
+    //    String s = gson.toJson(collpayInfo);
+    //    String query = queryController.Query(s);
+    //    System.out.println(query);
+    //}
 
 }
