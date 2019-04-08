@@ -251,16 +251,15 @@ public class DistillpayServiceImpl implements DistillpayService {
 
     /**
      * 清分方法
-     *
-     * @param collpayInfoMap
+     * @param distillpayInfoMap
      */
-    public void distribution(Map<String, String> collpayInfoMap) {
+    public void distribution(Map<String, String> distillpayInfoMap) {
         //通过路由给的上下游两个商户业务 id 查询数据库 .
-        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(collpayInfoMap.get("down_busi_id"));
-        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(collpayInfoMap.get("up_busi_id"));
+        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(distillpayInfoMap.get("down_busi_id"));
+        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(distillpayInfoMap.get("up_busi_id"));
 
         // 根据订单号获取订单信息
-        String out_trade_no = collpayInfoMap.get("out_trade_no");
+        String out_trade_no = distillpayInfoMap.get("out_trade_no");
         DistillpayInfo byOutTradeNo = distillpayInfoRespository.findByOutTradeNo(out_trade_no);
 
         //交易金额
@@ -299,7 +298,7 @@ public class DistillpayServiceImpl implements DistillpayService {
 
         DistributionInfo distributionInfo = new DistributionInfo();
         distributionInfo.setOut_trade_no(byOutTradeNo.getOut_trade_no());
-        distributionInfo.setBusi_type("collpay");
+        distributionInfo.setBusi_type("distillpay");
         distributionInfo.setDown_mch_id(byOutTradeNo.getDown_mch_id());
         distributionInfo.setDown_charge(final_down_charge.toString());
         distributionInfo.setUp_mch_id(byOutTradeNo.getMch_id());

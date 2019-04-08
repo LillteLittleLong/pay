@@ -107,6 +107,4 @@ public class QueryServiceImpl implements QueryService {
 
         return gson.toJson(finalDistillpayInfo);
     }
-
-
 }

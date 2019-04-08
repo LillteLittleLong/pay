@@ -37,7 +37,7 @@ public class NoticeServiceImpl implements NoticeService {
             String my_pri_key = downSpInfo.get().getMy_pri_key();
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
         }catch(Exception e){
-
+            // TODO: 2019/4/8 设置异常状态
         }
 
         Map map = new HashMap();

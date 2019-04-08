@@ -16,12 +16,9 @@ import java.util.Optional;
 public class NoticeServiceImpl implements NoticeService {
     
     @Autowired
-    EasypayInfoRepository easypayInfoRespository;
-
+    EasypayInfoRepository easypayInfoRepository;
     @Autowired
     EasypaySenderService easypaySenderService;
-
-
     @Autowired
     JmsMessagingTemplate jmsMessagingTemplate;
     
@@ -29,18 +26,14 @@ public class NoticeServiceImpl implements NoticeService {
     public String Upnotice(String outTradeNo,String tradeState) {
 
         Gson gson = new Gson();
-        /*Map noticeInfoToMap = gson.fromJson(noticeInfoToJson, Map.class);
+        Optional<EasypayInfo> easypayInfo = easypayInfoRepository.findById(outTradeNo);
 
-        String out_trade_no = (String)noticeInfoToMap.get("out_trade_no");*/
-        Optional<EasypayInfo> easypayInfo = easypayInfoRespository.findById(outTradeNo);
-
-        if(null == easypayInfoRespository.findNoticeStatus(outTradeNo)){
+        if(null == easypayInfoRepository.findNoticeStatus(outTradeNo)){
             String easypayInfoToJson = gson.toJson(easypayInfo);
             ToDown("easypaytodown.notice",easypayInfoToJson);
             String noticeStatus = "true";
-            easypayInfoRespository.updateNoticeStatus(noticeStatus,outTradeNo);
+            easypayInfoRepository.updateNoticeStatus(noticeStatus,outTradeNo);
         }
-
 
         return "SUCCESS";
     }
@@ -50,6 +43,5 @@ public class NoticeServiceImpl implements NoticeService {
         ActiveMQQueue activeMQQueue = new ActiveMQQueue(destinationName);
         jmsMessagingTemplate.convertAndSend(activeMQQueue , NoticeInfoToJson);
     }
-
 
 }
