@@ -295,7 +295,7 @@ public class DistillpayServiceImpl implements DistillpayService {
 
         DistributionInfo distributionInfo = new DistributionInfo();
         distributionInfo.setOut_trade_no(byOutTradeNo.getOut_trade_no());
-        distributionInfo.setBusi_type("collpay");
+        distributionInfo.setBusi_type("distillpay");
         distributionInfo.setDown_mch_id(byOutTradeNo.getDown_mch_id());
         distributionInfo.setDown_charge(final_down_charge.toString());
         distributionInfo.setUp_mch_id(byOutTradeNo.getMch_id());

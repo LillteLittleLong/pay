@@ -24,9 +24,11 @@
       <module name="collpay" options="-parameters" />
       <module name="distillpay" options="-parameters" />
       <module name="easypay" options="-parameters" />
+      <module name="eureka-server" options="-parameters" />
       <module name="eureka_server" options="-parameters" />
       <module name="gatewaypay" options="-parameters" />
       <module name="notice" options="-parameters" />
+      <module name="routing" options="-parameters" />
     </option>
   </component>
 </project>

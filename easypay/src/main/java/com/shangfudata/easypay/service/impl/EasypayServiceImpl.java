@@ -175,6 +175,9 @@ public class EasypayServiceImpl implements EasypayService {
 
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, easypayInfoToMap, 12000);
+
+        System.out.println("下单响应信息"+responseInfo);
+
         //获取响应信息，并用一个新对象装下这些响应信息
         EasypayInfo response = gson.fromJson(responseInfo, EasypayInfo.class);
         //将响应信息存储到交易完整信息中

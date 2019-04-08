@@ -24,11 +24,11 @@ import java.util.Optional;
 @SpringBootTest
 public class CollpayApplicationTests {
 
-    @Autowired
+    /*@Autowired
     CollpayController collpayController;
 
     @Autowired
-    QueryController queryController;
+    QueryController queryController;*/
 
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
@@ -94,7 +94,7 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("午饭晚饭呢");
+        collpayInfo.setBody("威锋网");
         collpayInfo.setTotal_fee("100999");
         collpayInfo.setCard_type("CREDIT");
         collpayInfo.setCard_name( "嘿嘿嘿");
@@ -104,8 +104,8 @@ public class CollpayApplicationTests {
         collpayInfo.setBank_mobile( "15563637881");
         collpayInfo.setCvv2("123");
         collpayInfo.setCard_valid_date("0318");
-        //collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
-        collpayInfo.setNotify_url("http://192.168.88.206:8101/notice");
+        collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
+        //collpayInfo.setNotify_url("http://192.168.88.206:8101/notice");
         collpayInfo.setNonce_str("12345678901234567890123456789011");
 
         //公钥加密
@@ -126,20 +126,20 @@ public class CollpayApplicationTests {
         //System.out.println("签名信息"+sign);
 
         String collpayInfoToJson = gson.toJson(collpayInfo);
-        System.out.println("签名信息"+collpayInfoToJson);
+        System.out.println("下游信息"+collpayInfoToJson);
         //String collpay = collpayController.Collpay(collpayInfoToJson);
         //System.out.println(collpay);
     }
 
 
     //@Test
-    public void testQuery(){
+    /*public void testQuery(){
         CollpayInfo collpayInfo = new CollpayInfo();
         collpayInfo.setOut_trade_no("1553148078245");
         Gson gson = new Gson();
         String s = gson.toJson(collpayInfo);
         String query = queryController.Query(s);
         System.out.println(query);
-    }
+    }*/
 
 }

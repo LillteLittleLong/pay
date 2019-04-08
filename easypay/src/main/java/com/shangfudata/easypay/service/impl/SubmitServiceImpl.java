@@ -119,7 +119,7 @@ public class SubmitServiceImpl implements SubmitService {
 
         DistributionInfo distributionInfo = new DistributionInfo();
         distributionInfo.setOut_trade_no(easypayInfo.getOut_trade_no());
-        distributionInfo.setBusi_type("collpay");
+        distributionInfo.setBusi_type("easypay");
         distributionInfo.setDown_mch_id(easypayInfo.getDown_mch_id());
         distributionInfo.setDown_charge(final_down_charge.toString());
         distributionInfo.setUp_mch_id(easypayInfo.getMch_id());

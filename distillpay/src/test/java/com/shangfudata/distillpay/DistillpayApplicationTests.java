@@ -48,7 +48,7 @@ public class DistillpayApplicationTests {
         distillpayInfo.setDown_mch_id("101");
 
         distillpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        distillpayInfo.setBody("符合无穷尽");
+        distillpayInfo.setBody("佛前我");
         distillpayInfo.setTotal_fee("110000");
         distillpayInfo.setSettle_acc_type("PERSONNEL");
         distillpayInfo.setBank_name("中国工商银行");
@@ -58,6 +58,7 @@ public class DistillpayApplicationTests {
         distillpayInfo.setId_type("ID_CARD");
         distillpayInfo.setId_no("342101196608282018");
         distillpayInfo.setNonce_str("12345678901234567890123456789011");
+        distillpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
 
         //公钥加密
         distillpayInfo.setCard_name(RSAUtils.publicKeyEncrypt(distillpayInfo.getCard_name(), rsaPublicKey));

@@ -45,7 +45,7 @@ public class GatewaypayApplicationTests {
         gatewaypayInfo.setDown_mch_id("101");
         gatewaypayInfo.setOut_trade_no(System.currentTimeMillis() + "");
         gatewaypayInfo.setTotal_fee("8789");
-        gatewaypayInfo.setBody("复合物i发");
+        gatewaypayInfo.setBody("七公分");
         gatewaypayInfo.setNotify_url("http://192.168.88.188:8104/gatewaypay/notice");
         gatewaypayInfo.setDown_notify_url("http://192.168.88.188:9001/consumer/notice");
         gatewaypayInfo.setCall_back_url("http://192.168.88.188:9001/consumer/success");

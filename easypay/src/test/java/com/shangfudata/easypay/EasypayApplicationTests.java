@@ -51,7 +51,7 @@ public class EasypayApplicationTests {
         easypayInfo.setDown_mch_id("101");
 
         easypayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        easypayInfo.setBody("给我发个");
+        easypayInfo.setBody("防火墙我");
         easypayInfo.setTotal_fee("88888");
         easypayInfo.setCard_type("CREDIT");
         easypayInfo.setCard_name( "应用");

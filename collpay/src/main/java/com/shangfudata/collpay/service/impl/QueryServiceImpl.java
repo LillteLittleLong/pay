@@ -19,7 +19,7 @@ import java.util.Map;
 @Service
 public class QueryServiceImpl implements QueryService {
 
-    private String methodUrl = "http://testapi.shangfudata.com/gate/cp/collpay";
+    private String methodUrl = "http://testapi.shangfudata.com/gate/spsvr/order/qry";
     String signKey = "00000000000000000000000000000000";
 
     @Autowired
@@ -89,7 +89,7 @@ public class QueryServiceImpl implements QueryService {
      * 下游查询方法
      * @param collpayInfoToJson
      */
-    @Cacheable(value = "collpay", key = "#order.outTradeNo", unless = "#result.tradeState eq 'PROCESSING'")
+    //@Cacheable(value = "collpay", key = "#order.outTradeNo", unless = "#result.tradeState eq 'PROCESSING'")
     public String downQuery(String collpayInfoToJson){
         Gson gson = new Gson();
         CollpayInfo collpayInfo = gson.fromJson(collpayInfoToJson, CollpayInfo.class);
