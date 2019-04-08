@@ -25,8 +25,6 @@ import java.util.Optional;
 public class DistillpayServiceImpl implements DistillpayService {
 
     String methodUrl = "http://testapi.shangfudata.com/gate/rtp/distillpay";
-    String signKey = "36D2F03FA9C94DCD9ADE335AC173CCC3";
-    String aesKey = "45FBC053B1913EE83BE7C2801B263F3F";
 
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
@@ -44,6 +42,8 @@ public class DistillpayServiceImpl implements DistillpayService {
     UpRoutingInfoRepository upRoutingInfoRepository;
     @Autowired
     EurekaDistillpayClient eurekaDistillpayClient;
+    @Autowired
+    UpMchInfoRepository upMchInfoRepository;
 
     public String downDistillpay(String distillpayInfoToJson) throws Exception{
         //创建一个map装返回信息
@@ -185,11 +185,13 @@ public class DistillpayServiceImpl implements DistillpayService {
         distillpayInfoToMap.remove("down_mch_id");
         distillpayInfoToMap.remove("sign");
         distillpayInfoToMap.remove("notify_url");
-        //对上交易信息进行签名
-        distillpayInfoToMap.put("sign", SignUtils.sign(distillpayInfoToMap, signKey));
 
+        // 获取上游商户信息
+        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(distillpayInfo.getMch_id());
+        //对上交易信息进行签名
+        distillpayInfoToMap.put("sign", SignUtils.sign(distillpayInfoToMap, upMchInfo.getSign_key()));
         //AES加密操作
-        upEncoding(distillpayInfoToMap, aesKey);
+        upEncoding(distillpayInfoToMap, upMchInfo.getSec_key());
 
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, distillpayInfoToMap, 12000);
@@ -247,16 +249,15 @@ public class DistillpayServiceImpl implements DistillpayService {
 
     /**
      * 清分方法
-     *
-     * @param collpayInfoMap
+     * @param distillpayInfoMap
      */
-    public void distribution(Map<String, String> collpayInfoMap) {
+    public void distribution(Map<String, String> distillpayInfoMap) {
         //通过路由给的上下游两个商户业务 id 查询数据库 .
-        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(collpayInfoMap.get("down_busi_id"));
-        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(collpayInfoMap.get("up_busi_id"));
+        DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(distillpayInfoMap.get("down_busi_id"));
+        UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(distillpayInfoMap.get("up_busi_id"));
 
         // 根据订单号获取订单信息
-        String out_trade_no = collpayInfoMap.get("out_trade_no");
+        String out_trade_no = distillpayInfoMap.get("out_trade_no");
         DistillpayInfo byOutTradeNo = distillpayInfoRespository.findByOutTradeNo(out_trade_no);
 
         //交易金额

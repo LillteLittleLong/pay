@@ -11,7 +11,6 @@ public class GatewaypayController {
     @Autowired
     GatewaypayService gatewaypayService;
 
-
     /**
      * 对下开放请求内部处理接口
      * @param gatewaypayInfoToJson
@@ -25,8 +24,5 @@ public class GatewaypayController {
         System.out.println("***::"+gatewaypayInfoToJson);
 
         return gatewaypayService.downGatewaypay(gatewaypayInfoToJson);
-
     }
-
-
 }

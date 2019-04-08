@@ -51,7 +51,6 @@ public class CollpayServiceImpl implements CollpayService {
     @Autowired
     UpRoutingInfoRepository upRoutingInfoRepository;
 
-
     private String methodUrl = "http://testapi.shangfudata.com/gate/cp/collpay";
 
     /**
@@ -166,7 +165,6 @@ public class CollpayServiceImpl implements CollpayService {
         responseMap.put("message", "签名错误");
         return gson.toJson(responseMap);
     }
-
 
     /**
      * 向上交易方法

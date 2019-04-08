@@ -3,14 +3,8 @@ package com.shangfudata.easypay.service.impl;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-import com.shangfudata.easypay.dao.DistributionInfoRepository;
-import com.shangfudata.easypay.dao.DownMchBusiInfoRepository;
-import com.shangfudata.easypay.dao.EasypayInfoRepository;
-import com.shangfudata.easypay.dao.UpMchBusiInfoRepository;
-import com.shangfudata.easypay.entity.DistributionInfo;
-import com.shangfudata.easypay.entity.DownMchBusiInfo;
-import com.shangfudata.easypay.entity.EasypayInfo;
-import com.shangfudata.easypay.entity.UpMchBusiInfo;
+import com.shangfudata.easypay.dao.*;
+import com.shangfudata.easypay.entity.*;
 import com.shangfudata.easypay.service.SubmitService;
 import com.shangfudata.easypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,17 +23,23 @@ public class SubmitServiceImpl implements SubmitService {
     DownMchBusiInfoRepository downMchBusiInfoRepository;
     @Autowired
     DistributionInfoRepository distributionInfoRepository;
+    @Autowired
+    UpMchInfoRepository upMchInfoRepository;
 
     String methodUrl = "http://192.168.88.65:8888/gate/epay/epsubmit";
-    String signKey = "00000000000000000000000000000000";
+    //String signKey = "00000000000000000000000000000000";
 
     @Override
     public String submit(String sumbitInfoToJson) {
         Gson gson = new Gson();
         Map sumbitInfoToMap = gson.fromJson(sumbitInfoToJson, Map.class);
         String out_trade_no = (String)sumbitInfoToMap.get("out_trade_no");
-        sumbitInfoToMap.replace("nonce_str", "123456789");
-        sumbitInfoToMap.put("sign", SignUtils.sign(sumbitInfoToMap, signKey));
+        // 获取上游商户信息
+        EasypayInfo easypayInfo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
+        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(easypayInfo.getMch_id());
+        // 获取 nonce_str sign_key
+        sumbitInfoToMap.replace("nonce_str", easypayInfo.getNonce_str());
+        sumbitInfoToMap.put("sign", SignUtils.sign(sumbitInfoToMap, upMchInfo.getSign_key()));
         String responseInfo = HttpUtil.post(methodUrl, sumbitInfoToMap, 12000);
 
         EasypayInfo response = gson.fromJson(responseInfo, EasypayInfo.class);
@@ -53,12 +53,9 @@ public class SubmitServiceImpl implements SubmitService {
         String code = response.getCode();
         String message = response.getMessage();
 
-
         if("SUCCESS".equals(status)){
             //将订单信息表存储数据库
             easypayInfoRepository.updateTradeState(trade_state,err_code,err_msg,out_trade_no);
-
-
             EasypayInfo byOutTradeNo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
 
             //清分
@@ -66,11 +63,6 @@ public class SubmitServiceImpl implements SubmitService {
         }else if("FAIL".equals(status)){
             easypayInfoRepository.updateFailTradeState(status,code,message,out_trade_no);
         }
-
-        /*//向下通知
-        noticeService.ToDown(easypayInfoRepository.findByOutTradeNo(out_trade_no));
-        //noticeService.notice(collpayInfoRespository.findByOutTradeNo(collpayInfo.getOut_trade_no()));*/
-
         return responseInfo;
     }
 
@@ -127,7 +119,6 @@ public class SubmitServiceImpl implements SubmitService {
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
 
-        System.out.println("清分信息 > " + distributionInfo);
         //存数据库
         distributionInfoRepository.save(distributionInfo);
     }
