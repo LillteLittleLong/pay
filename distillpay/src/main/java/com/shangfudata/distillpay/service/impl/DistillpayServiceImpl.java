@@ -25,8 +25,6 @@ import java.util.Optional;
 public class DistillpayServiceImpl implements DistillpayService {
 
     String methodUrl = "http://testapi.shangfudata.com/gate/rtp/distillpay";
-    //String signKey = "36D2F03FA9C94DCD9ADE335AC173CCC3";
-    //String aesKey = "45FBC053B1913EE83BE7C2801B263F3F";
 
     @Autowired
     DownSpInfoRespository downSpInfoRespository;

@@ -10,9 +10,7 @@ import java.util.Map;
 public class NoticeController {
 
     @Autowired
-
     NoticeService noticeService;
-
 
     @PostMapping("/notice")
     @ResponseBody

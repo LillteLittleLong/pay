@@ -50,7 +50,6 @@ public class EasypayServiceImpl implements EasypayService {
      * @throws Exception
      */
     public String downEasypay(String easypayInfoToJson) throws Exception {
-
         //创建一个工具类对象
         //DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
@@ -74,7 +73,6 @@ public class EasypayServiceImpl implements EasypayService {
         String down_sp_id = easypayInfo.getDown_sp_id();
 
         Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
-        System.out.println("下游请求参数 >> " + downSpInfo.get());
         //拿到密钥(私钥)
         String my_pri_key = downSpInfo.get().getMy_pri_key();
         RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);

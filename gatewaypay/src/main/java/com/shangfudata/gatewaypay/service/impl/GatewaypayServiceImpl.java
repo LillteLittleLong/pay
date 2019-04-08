@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.shangfudata.gatewaypay.dao.*;
 import com.shangfudata.gatewaypay.entity.DownSpInfo;
 import com.shangfudata.gatewaypay.entity.GatewaypayInfo;
+import com.shangfudata.gatewaypay.entity.UpMchInfo;
 import com.shangfudata.gatewaypay.entity.UpRoutingInfo;
 import com.shangfudata.gatewaypay.eureka.EurekaGatewaypayClient;
 import com.shangfudata.gatewaypay.service.GatewaypayService;
@@ -14,7 +15,6 @@ import com.shangfudata.gatewaypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,12 +24,11 @@ import java.util.Optional;
 public class GatewaypayServiceImpl implements GatewaypayService {
 
     String methodUrl = "http://192.168.88.65:8888/gate/gw/apply";
-    String signKey = "00000000000000000000000000000000";
 
     @Autowired
-    DownSpInfoRepository downSpInfoRespository;
+    DownSpInfoRepository downSpInfoRepository;
     @Autowired
-    GatewaypayInfoRepository gatewaypayInfoRespository;
+    GatewaypayInfoRepository gatewaypayInfoRepository;
     @Autowired
     EurekaGatewaypayClient eurekaGatewaypayClient;
     @Autowired
@@ -38,6 +37,8 @@ public class GatewaypayServiceImpl implements GatewaypayService {
     UpMchBusiInfoRepository upMchBusiInfoRepository;
     @Autowired
     DownMchBusiInfoRepository downMchBusiInfoRepository;
+    @Autowired
+    UpMchInfoRepository upMchInfoRepository;
 
     /**
      * 对下开放的网关交易
@@ -72,10 +73,7 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         GatewaypayInfo gatewaypayInfo = gson.fromJson(gatewaypayInfoToJson, GatewaypayInfo.class);
         String down_sp_id = gatewaypayInfo.getDown_sp_id();
 
-        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
-        //拿到我自己（平台）的密钥(私钥)
-        String my_pri_key = downSpInfo.get().getMy_pri_key();
-        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+        Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
         //拿到下游给的密钥(公钥)
         String down_pub_key = downSpInfo.get().getDown_pub_key();
         RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
@@ -169,8 +167,10 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         gatewaypayInfoToMap.remove("down_notify_url");
         gatewaypayInfoToMap.remove("sign");
 
+        // 获取上游商户信息
+        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(gatewaypayInfo.getMch_id());
         //对上交易信息进行签名
-        gatewaypayInfoToMap.put("sign", SignUtils.sign(gatewaypayInfoToMap, signKey));
+        gatewaypayInfoToMap.put("sign", SignUtils.sign(gatewaypayInfoToMap, upMchInfo.getSign_key()));
 
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, gatewaypayInfoToMap, 12000);
@@ -184,7 +184,7 @@ public class GatewaypayServiceImpl implements GatewaypayService {
 
             gatewaypayInfo.setDown_busi_id(down_busi_id);
             gatewaypayInfo.setUp_busi_id(up_busi_id);
-            gatewaypayInfoRespository.save(gatewaypayInfo);
+            gatewaypayInfoRepository.save(gatewaypayInfo);
 
         } else {
             //错误响应，返回的是错误信息
@@ -195,11 +195,10 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             gatewaypayInfo.setCode(response.getCode());
             gatewaypayInfo.setMessage(response.getMessage());
 
-            gatewaypayInfoRespository.save(gatewaypayInfo);
+            gatewaypayInfoRepository.save(gatewaypayInfo);
         }
 
-        //无论正确还是错误都同步返回
+        // 无论正确还是错误都同步返回
         return responseInfo;
     }
-
 }

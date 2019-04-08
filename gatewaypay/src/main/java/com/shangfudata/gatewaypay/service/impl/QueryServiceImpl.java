@@ -3,11 +3,7 @@ package com.shangfudata.gatewaypay.service.impl;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-
-import com.shangfudata.gatewaypay.dao.DistributionInfoRespository;
-import com.shangfudata.gatewaypay.dao.DownMchBusiInfoRepository;
-import com.shangfudata.gatewaypay.dao.GatewaypayInfoRepository;
-import com.shangfudata.gatewaypay.dao.UpMchBusiInfoRepository;
+import com.shangfudata.gatewaypay.dao.*;
 import com.shangfudata.gatewaypay.entity.*;
 import com.shangfudata.gatewaypay.service.NoticeService;
 import com.shangfudata.gatewaypay.service.QueryService;
@@ -15,7 +11,6 @@ import com.shangfudata.gatewaypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +19,6 @@ import java.util.Map;
 public class QueryServiceImpl implements QueryService {
 
     String queryUrl = "http://192.168.88.65:8888/gate/spsvr/order/qry";
-    String signKey = "00000000000000000000000000000000";
 
     @Autowired
     GatewaypayInfoRepository gatewaypayInfoRepository;
@@ -36,11 +30,15 @@ public class QueryServiceImpl implements QueryService {
     DistributionInfoRespository distributionInfoRespository;
     @Autowired
     NoticeService noticeService;
+    @Autowired
+    UpMchInfoRepository upMchInfoRepository;
+
+    @Autowired
 
     /**
      * 向上查询（轮询方法）
      */
-    @Scheduled(cron = "*/5 * * * * ?")
+    @Scheduled(cron = "*/60 * * * * ?")
     public void queryToUp() {
 
         Gson gson = new Gson();
@@ -61,8 +59,11 @@ public class QueryServiceImpl implements QueryService {
                 //将queryInfo转为json，再转map
                 String query = gson.toJson(queryInfo);
                 Map queryMap = gson.fromJson(query, Map.class);
+
+                // 获取上游商户信息
+                UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(gatewaypayInfo.getMch_id());
                 //签名
-                queryMap.put("sign", SignUtils.sign(queryMap, signKey));
+                queryMap.put("sign", SignUtils.sign(queryMap, upMchInfo.getSign_key()));
 
                 //发送查询请求，得到响应信息
                 String queryResponse = HttpUtil.post(queryUrl, queryMap, 6000);
@@ -80,9 +81,9 @@ public class QueryServiceImpl implements QueryService {
                     String trade_state = responseInfo.getTrade_state();
                     String err_code = responseInfo.getErr_code();
                     String err_msg = responseInfo.getErr_msg();
-                    String settle_state = responseInfo.getSettle_state();
-                    String settle_state_desc = responseInfo.getSettle_state_desc();
-                    String ch_trade_no = responseInfo.getCh_trade_no();
+                    //String settle_state = responseInfo.getSettle_state();
+                    //String settle_state_desc = responseInfo.getSettle_state_desc();
+                    //String ch_trade_no = responseInfo.getCh_trade_no();
 
                     //失败信息
                     String code = responseInfo.getCode();
