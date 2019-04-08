@@ -27,7 +27,6 @@ public class SubmitServiceImpl implements SubmitService {
     UpMchInfoRepository upMchInfoRepository;
 
     String methodUrl = "http://192.168.88.65:8888/gate/epay/epsubmit";
-    //String signKey = "00000000000000000000000000000000";
 
     @Override
     public String submit(String sumbitInfoToJson) {
