@@ -94,13 +94,13 @@ public class EasypayApplicationTests {
     }
 
     @Test
-    public void testSubmit()throws Exception{
+    public void testSubmit() {
         Gson gson = new Gson();
 
         EasypayInfo easypayInfo = new EasypayInfo();
         easypayInfo.setSp_id("1000");
         easypayInfo.setMch_id("100001000000000001");
-        easypayInfo.setOut_trade_no("1554367428963");
+        easypayInfo.setOut_trade_no("1554691446293");
         easypayInfo.setPassword("123456");
         easypayInfo.setNonce_str("12345678901234567890123456789011");
 

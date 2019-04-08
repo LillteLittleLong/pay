@@ -12,7 +12,6 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Optional;
@@ -23,13 +22,10 @@ public class DistillpayApplicationTests {
 
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
-
     @Autowired
     DistillpayController distillpayController;
-
     @Autowired
     QueryController queryController;
-
 
     @Test
     public void contextLoads() throws Exception{

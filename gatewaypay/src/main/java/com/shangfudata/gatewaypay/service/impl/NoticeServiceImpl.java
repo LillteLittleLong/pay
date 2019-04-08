@@ -47,16 +47,13 @@ public class NoticeServiceImpl implements NoticeService {
         String down_sp_id = gatewaypayInfo.getDown_sp_id();
         Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
 
-        RSAPublicKey rsaPublicKey = null;
         RSAPrivateKey rsaPrivateKey = null;
         try{
-            //获取公钥
-            String down_pub_key = downSpInfo.get().getDown_pub_key();
-            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
             //获取私钥
             String my_pri_key = downSpInfo.get().getMy_pri_key();
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
         }catch(Exception e){
+            // TODO: 2019/4/8 异常处理
 
         }
 

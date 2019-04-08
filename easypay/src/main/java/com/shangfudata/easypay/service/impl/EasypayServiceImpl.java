@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.shangfudata.easypay.dao.*;
 import com.shangfudata.easypay.entity.DownSpInfo;
 import com.shangfudata.easypay.entity.EasypayInfo;
+import com.shangfudata.easypay.entity.UpMchInfo;
 import com.shangfudata.easypay.entity.UpRoutingInfo;
 import com.shangfudata.easypay.eureka.EurekaEasypayClient;
 import com.shangfudata.easypay.service.EasypayService;
@@ -34,11 +35,10 @@ public class EasypayServiceImpl implements EasypayService {
     UpMchBusiInfoRepository upMchBusiInfoRepository;
     @Autowired
     UpRoutingInfoRepository upRoutingInfoRepository;
+    @Autowired
+    UpMchInfoRepository upMchInfoRepository;
 
     String methodUrl = "http://192.168.88.65:8888/gate/epay/epapply";
-    String signKey = "00000000000000000000000000000000";
-    String aesKey = "77A231F976FF932024B68469EA9823F3";//上游给的密钥
-
     //创建一个map装返回信息
     Map responseMap = new HashMap();
 
@@ -50,7 +50,6 @@ public class EasypayServiceImpl implements EasypayService {
      * @throws Exception
      */
     public String downEasypay(String easypayInfoToJson) throws Exception {
-
         //创建一个工具类对象
         //DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
@@ -74,7 +73,6 @@ public class EasypayServiceImpl implements EasypayService {
         String down_sp_id = easypayInfo.getDown_sp_id();
 
         Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
-        System.out.println("下游请求参数 >> " + downSpInfo.get());
         //拿到密钥(私钥)
         String my_pri_key = downSpInfo.get().getMy_pri_key();
         RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
@@ -168,10 +166,12 @@ public class EasypayServiceImpl implements EasypayService {
         easypayInfoToMap.remove("down_notify_url");
         easypayInfoToMap.remove("sign");
 
+        // 获取上游商户信息
+        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(easypayInfo.getMch_id());
         //对上交易信息进行签名
-        easypayInfoToMap.put("sign", SignUtils.sign(easypayInfoToMap, signKey));
+        easypayInfoToMap.put("sign", SignUtils.sign(easypayInfoToMap, upMchInfo.getSign_key()));
         //AES加密操作
-        upEncoding(easypayInfoToMap, aesKey);
+        upEncoding(easypayInfoToMap, upMchInfo.getSec_key());
 
         //发送请求
         String responseInfo = HttpUtil.post(methodUrl, easypayInfoToMap, 12000);
@@ -206,10 +206,8 @@ public class EasypayServiceImpl implements EasypayService {
         return gson.toJson(responseMap);
     }
 
-
     /**
      * RSA 解密方法
-     *
      * @param easypayInfo
      * @param rsaPrivateKey
      */

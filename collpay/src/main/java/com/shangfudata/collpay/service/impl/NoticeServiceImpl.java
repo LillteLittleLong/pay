@@ -20,7 +20,6 @@ import java.util.Optional;
 public class NoticeServiceImpl implements NoticeService {
     @Autowired
     CollpayInfoRespository collpayInfoRespository;
-    
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
 
@@ -34,33 +33,33 @@ public class NoticeServiceImpl implements NoticeService {
 
         RSAPublicKey rsaPublicKey = null;
         RSAPrivateKey rsaPrivateKey = null;
-        try{
+        try {
             //获取公钥
             String down_pub_key = downSpInfo.get().getDown_pub_key();
             rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
             //获取私钥
             String my_pri_key = downSpInfo.get().getMy_pri_key();
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
-        }catch(Exception e){
+        } catch (Exception e) {
 
         }
 
         Map map = new HashMap();
 
-        if("SUCCESS".equals(collpayInfo.getStatus())){
-            map.put("status",collpayInfo.getStatus());
-            map.put("trade_state",collpayInfo.getTrade_state());
-            map.put("err_code",collpayInfo.getErr_code());
-            map.put("err_msg",collpayInfo.getErr_msg());
-        }else if("FAIL".equals(collpayInfo.getStatus())){
-            map.put("status",collpayInfo.getStatus());
-            map.put("code",collpayInfo.getCode());
-            map.put("message",collpayInfo.getMessage());
+        if ("SUCCESS".equals(collpayInfo.getStatus())) {
+            map.put("status", collpayInfo.getStatus());
+            map.put("trade_state", collpayInfo.getTrade_state());
+            map.put("err_code", collpayInfo.getErr_code());
+            map.put("err_msg", collpayInfo.getErr_msg());
+        } else if ("FAIL".equals(collpayInfo.getStatus())) {
+            map.put("status", collpayInfo.getStatus());
+            map.put("code", collpayInfo.getCode());
+            map.put("message", collpayInfo.getMessage());
         }
 
         //私钥签名
         String s = gson.toJson(map);
-        map.put("sign",RSAUtils.sign(s,rsaPrivateKey));
+        map.put("sign", RSAUtils.sign(s, rsaPrivateKey));
         String responseInfoJson = gson.toJson(map);
 
         // 通知计数
@@ -68,14 +67,11 @@ public class NoticeServiceImpl implements NoticeService {
         // 通知结果
         String body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
 
-        while(!(body.equals("SUCCESS")) && count != 5){
-            //body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+        while (!(body.equals("SUCCESS")) && count != 5) {
             body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
             count++;
         }
         String notice_status = "true";
-        collpayInfoRespository.updateNoticeStatus(notice_status,collpayInfo.getOut_trade_no());
-
-
+        collpayInfoRespository.updateNoticeStatus(notice_status, collpayInfo.getOut_trade_no());
     }
 }

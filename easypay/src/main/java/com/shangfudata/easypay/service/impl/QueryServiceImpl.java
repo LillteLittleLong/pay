@@ -3,8 +3,10 @@ package com.shangfudata.easypay.service.impl;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
 import com.shangfudata.easypay.dao.EasypayInfoRepository;
+import com.shangfudata.easypay.dao.UpMchInfoRepository;
 import com.shangfudata.easypay.entity.EasypayInfo;
 import com.shangfudata.easypay.entity.QueryInfo;
+import com.shangfudata.easypay.entity.UpMchInfo;
 import com.shangfudata.easypay.service.QueryService;
 import com.shangfudata.easypay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,29 +20,26 @@ import java.util.Map;
 public class QueryServiceImpl implements QueryService {
 
     String queryUrl = "http://192.168.88.65:8888/gate/spsvr/order/qry";
-    String signKey = "00000000000000000000000000000000";
-
 
     @Autowired
-    EasypayInfoRepository easypayInfoRespository;
-
+    EasypayInfoRepository easypayInfoRepository;
+    @Autowired
+    UpMchInfoRepository upMchInfoRepository;
 
     /**
      * 向上查询（轮询方法）
      */
     @Scheduled(cron = "*/60 * * * * ?")
-    public void queryToUp () throws Exception{
-
+    public void queryToUp() {
         Gson gson = new Gson();
 
         //查询所有交易状态为NOTPAY的订单信息
-        List<EasypayInfo> easypayInfoList = easypayInfoRespository.findByTradeState("NOTPAY");
+        List<EasypayInfo> easypayInfoList = easypayInfoRepository.findByTradeState("NOTPAY");
 
         //遍历
         for (EasypayInfo easypayInfo : easypayInfoList) {
             //判断处理状态为SUCCESS的才进行下一步操作
             if ("SUCCESS".equals(easypayInfo.getStatus())) {
-                //if ("PROCESSING".equals(upeasypayInfo.getTrade_state())) {
                 //查询参数对象
                 QueryInfo queryInfo = new QueryInfo();
                 queryInfo.setMch_id(easypayInfo.getMch_id());
@@ -50,8 +49,11 @@ public class QueryServiceImpl implements QueryService {
                 //将queryInfo转为json，再转map
                 String query = gson.toJson(queryInfo);
                 Map queryMap = gson.fromJson(query, Map.class);
+
+                // 获取上游商户信息
+                UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(easypayInfo.getMch_id());
                 //签名
-                queryMap.put("sign",SignUtils.sign(queryMap, signKey));
+                queryMap.put("sign", SignUtils.sign(queryMap, upMchInfo.getSign_key()));
 
                 //发送查询请求，得到响应信息
                 String queryResponse = HttpUtil.post(queryUrl, queryMap, 6000);
@@ -70,7 +72,7 @@ public class QueryServiceImpl implements QueryService {
                     String out_trade_no = easypayInfo.getOut_trade_no();
 
                     //根据订单号，更新数据库交易信息表
-                    easypayInfoRespository.updateTradeState(trade_state,err_code,err_msg,out_trade_no);
+                    easypayInfoRepository.updateTradeState(trade_state, err_code, err_msg, out_trade_no);
 
                     //String out_trade_no1 = easypayInfo.getOut_trade_no();
                     //easypayInfoRepository.updateNoticeStatus("true",out_trade_no1);
@@ -78,24 +80,23 @@ public class QueryServiceImpl implements QueryService {
                     //String notice_status = "true";
                     //easypayInfoRepository.updateNoticeStatus(notice_status,out_trade_no);
                 }
-                //}
             }
         }
     }
 
 
-
     /**
      * 下游查询方法
+     *
      * @param easypayInfoToJson
      */
     //@Cacheable(value = "collpay", key = "#order.outTradeNo", unless = "#result.tradeState eq 'PROCESSING'")
-    public String downQuery(String easypayInfoToJson){
+    public String downQuery(String easypayInfoToJson) {
         Gson gson = new Gson();
         EasypayInfo easypayInfo = gson.fromJson(easypayInfoToJson, EasypayInfo.class);
         String out_trade_no = easypayInfo.getOut_trade_no();
 
-        EasypayInfo finalEasypayInfo = easypayInfoRespository.findByOutTradeNo(out_trade_no);
+        EasypayInfo finalEasypayInfo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
 
         return gson.toJson(finalEasypayInfo);
     }

@@ -11,7 +11,6 @@ public class QueryController {
     @Autowired
     QueryService queryService;
 
-
     @PostMapping(value = "/query", produces = "application/json;charset=UTF-8")
     @ResponseBody
     public String Query(@RequestBody String gatewaypayInfoToJson){
