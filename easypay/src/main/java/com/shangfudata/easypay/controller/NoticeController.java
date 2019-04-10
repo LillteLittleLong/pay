@@ -1,6 +1,8 @@
 package com.shangfudata.easypay.controller;
 
 import com.shangfudata.easypay.service.NoticeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,16 +14,14 @@ public class NoticeController {
 
     @Autowired
     NoticeService noticeService;
-
+    Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @PostMapping("/notice")
     @ResponseBody
-    public String notice(@RequestParam("out_trade_no") String out_trade_no,
-                         @RequestParam("trade_state") String trade_state){
-        System.out.println("***订单号**"+out_trade_no);
-        System.out.println("***订单交易状态**"+trade_state);
+    public String notice(@RequestParam Map<String ,String> map){
 
+        noticeService.Upnotice(map);
         //传入订单号以及交易状态
-        return noticeService.Upnotice(out_trade_no,trade_state);
+        return "SUCCESS";
     }
 }

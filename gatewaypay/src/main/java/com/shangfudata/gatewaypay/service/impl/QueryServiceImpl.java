@@ -8,10 +8,13 @@ import com.shangfudata.gatewaypay.entity.*;
 import com.shangfudata.gatewaypay.service.NoticeService;
 import com.shangfudata.gatewaypay.service.QueryService;
 import com.shangfudata.gatewaypay.util.SignUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,12 +36,13 @@ public class QueryServiceImpl implements QueryService {
     @Autowired
     UpMchInfoRepository upMchInfoRepository;
 
-    @Autowired
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
 
     /**
      * 向上查询（轮询方法）
      */
-    @Scheduled(cron = "*/60 * * * * ?")
+    @Scheduled(cron = "0 */5 * * * ?")
     public void queryToUp() {
 
         Gson gson = new Gson();
@@ -64,10 +68,16 @@ public class QueryServiceImpl implements QueryService {
                 UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(gatewaypayInfo.getMch_id());
                 //签名
                 queryMap.put("sign", SignUtils.sign(queryMap, upMchInfo.getSign_key()));
+                logger.info("向上查询请求信息："+queryMap);
 
                 //发送查询请求，得到响应信息
                 String queryResponse = HttpUtil.post(queryUrl, queryMap, 6000);
-                System.out.println("查询响应信息：：" + queryResponse);
+                if(null == queryResponse){
+                    logger.error("向上查询请求失败：");
+                }else{
+                    logger.info("向上查询请求响应信息："+queryResponse);
+                }
+
                 //使用一个新的UpdistillpayInfo对象，接收响应参数
                 GatewaypayInfo responseInfo = gson.fromJson(queryResponse, GatewaypayInfo.class);
                 //如果交易状态发生改变，那就更新。
@@ -89,23 +99,23 @@ public class QueryServiceImpl implements QueryService {
                     String code = responseInfo.getCode();
                     String message = responseInfo.getMessage();
 
-
                     //根据订单号，更新数据库交易信息表
                     if ("SUCCESS".equals(status)) {
                         //将订单信息表存储数据库
                         gatewaypayInfoRepository.updateSuccessTradeState(trade_state, err_code, err_msg, out_trade_no);
-                        System.out.println("开始清分");
+
                         //如果交易状态为成功，做清分
                         if ("SUCCESS".equals(trade_state)) {
                             // 网关清分
                             GatewaypayInfo byOutTradeNo = gatewaypayInfoRepository.findByOutTradeNo(out_trade_no);
+                            logger.info("清分计算信息"+byOutTradeNo);
                             distribution(byOutTradeNo);
                         }
                     } else if ("FAIL".equals(status)) {
                         gatewaypayInfoRepository.updateFailTradeState(status, code, message, out_trade_no);
                     }
-                    GatewaypayInfo byOutTradeNo = gatewaypayInfoRepository.findByOutTradeNo(out_trade_no);
-                    noticeService.ToDown(byOutTradeNo);
+                    //向下发送通知
+                    noticeService.ToDown(gatewaypayInfoRepository.findByOutTradeNo(out_trade_no));
                 }
             }
         }
@@ -119,11 +129,19 @@ public class QueryServiceImpl implements QueryService {
      */
     //@Cacheable(value = "collpay", key = "#order.outTradeNo", unless = "#result.tradeState eq 'PROCESSING'")
     public String downQuery(String gatewaypayInfoToJson) {
+        //创建一个map装返回信息
+        Map<String,String> rsp = new HashMap();
         Gson gson = new Gson();
         GatewaypayInfo gatewaypayInfo = gson.fromJson(gatewaypayInfoToJson, GatewaypayInfo.class);
         String out_trade_no = gatewaypayInfo.getOut_trade_no();
 
         GatewaypayInfo finalGatewaypayInfo = gatewaypayInfoRepository.findByOutTradeNo(out_trade_no);
+        if(null ==finalGatewaypayInfo){
+            rsp.put("status", "FAIL");
+            rsp.put("message", "查询信息错误");
+            logger.error("未查到订单，查询错误");
+            return gson.toJson(rsp);
+        }
 
         return gson.toJson(finalGatewaypayInfo);
     }
@@ -134,6 +152,7 @@ public class QueryServiceImpl implements QueryService {
      * @param gatewaypayInfo
      */
     public void distribution(GatewaypayInfo gatewaypayInfo) {
+        logger.info("清分计算信息："+gatewaypayInfo);
         //计算清分,需要拿到{上游商户的手续费率，下游商户的手续费率}
         DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(gatewaypayInfo.getDown_busi_id());
         UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(gatewaypayInfo.getUp_busi_id());
@@ -181,6 +200,7 @@ public class QueryServiceImpl implements QueryService {
         distributionInfo.setUp_charge(final_up_charge.toString());
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
+        logger.info("清分结果："+distributionInfo);
 
         //存数据库
         distributionInfoRespository.save(distributionInfo);

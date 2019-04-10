@@ -27,6 +27,31 @@ public class MyException {
         public static final String CREDIT = "CREDIT";
 
     }
+    public static class settleAccType {
+
+        /**
+         * 账户类型
+         * PERSONNEL：对私
+         * CORPORATE：对公
+         */
+        public static final String PERSONNEL = "PERSONNEL";
+        public static final String CORPORATE = "CORPORATE";
+
+    }
+    public static class settleAccTypeError extends RuntimeException {
+
+        /**
+         * 账户类型错误
+         */
+
+    }
+    public static class BankNoLengthException extends RuntimeException {
+
+        /**
+         * 联行号长度错误
+         */
+
+    }
     public static class CardTypeError extends RuntimeException {
 
         /**

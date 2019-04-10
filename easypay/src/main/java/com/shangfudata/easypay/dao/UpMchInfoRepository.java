@@ -12,5 +12,5 @@ import org.springframework.data.jpa.repository.Query;
 public interface UpMchInfoRepository extends JpaRepository<UpMchInfo, String>, JpaSpecificationExecutor<UpMchInfo> {
 
     @Query("from UpMchInfo where mch_id = ?1")
-    UpMchInfo queryByMchId(String mchId);
+    UpMchInfo findByMchId(String mchId);
 }

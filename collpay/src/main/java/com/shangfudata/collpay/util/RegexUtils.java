@@ -7,17 +7,10 @@ import java.util.regex.Pattern;
 import static com.shangfudata.collpay.util.ConstUtils.*;
 
 /**
- * Created by tinlly to 2019/3/28
- * Package for com.shangfudata.collpay.util
+ * 正则相关工具类
  */
 public class RegexUtils {
 
-    /**
-     * author: Blankj
-     * blog  : http://blankj.com
-     * time  : 2016/8/2
-     * desc  : 正则相关工具类
-     */
 
     private RegexUtils() {
         throw new UnsupportedOperationException("u can't instantiate me...");

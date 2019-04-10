@@ -15,7 +15,8 @@ public class NoticeController {
     @PostMapping("/notice")
     @ResponseBody
     public String notice(@RequestParam Map<String ,String> map){
+        noticeService.Upnotice(map);
         //传入订单号以及交易状态
-        return noticeService.Upnotice(map);
+        return "SUCCESS";
     }
 }

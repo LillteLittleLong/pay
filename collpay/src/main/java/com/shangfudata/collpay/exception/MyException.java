@@ -1,6 +1,9 @@
 package com.shangfudata.collpay.exception;
 
-public class CollpayException {
+/**
+ * 自定义异常类
+ */
+public class MyException {
 
     public static class BankCardIDException extends RuntimeException{
         /**
@@ -41,8 +44,6 @@ public class CollpayException {
          */
 
     }
-
-
     public static class IDType {
 
         /**

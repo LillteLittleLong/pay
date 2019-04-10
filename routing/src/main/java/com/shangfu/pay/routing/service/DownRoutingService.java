@@ -2,10 +2,10 @@ package com.shangfu.pay.routing.service;
 
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
-import cn.hutool.core.lang.Console;
-import cn.hutool.core.util.ObjectUtil;
 import com.shangfu.pay.routing.dao.DownMchBusiInfoRepository;
 import com.shangfu.pay.routing.entity.DownMchBusiInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +20,8 @@ public class DownRoutingService {
 
     @Autowired
     DownMchBusiInfoRepository downMchBusiInfoRepository;
+
+    Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /**
      * 下游路由分发处理
@@ -36,22 +38,23 @@ public class DownRoutingService {
      * @return 返回通道 id
      */
     public Integer downRouting(Map<String, String> map, Map<String, String> routingMap) {
-        System.out.println("请求参数 >> " + ObjectUtil.toString(map));
+
+        //System.out.println("请求参数 >> " + ObjectUtil.toString(map));
+        logger.info("请求参数 >> "+map);
 
         // 获取该商户的所有通道
         // 查询某个通道
         DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.queryMchPassage(map.get("down_sp_id"), map.get("down_mch_id"), map.get("passage"));
-        System.out.println("通道业务表 downMchBusiInfo >> " + ObjectUtil.toString(downMchBusiInfo));
-
-
+        //System.out.println("通道业务表 downMchBusiInfo >> " + ObjectUtil.toString(downMchBusiInfo));
+        logger.info("通道业务表 downMchBusiInfo >> "+downMchBusiInfo);
         if (null == downMchBusiInfo) {
             routingMap.put("status", "FAIL");
             routingMap.put("message", "没有可用通道 , 无法交易");
+            logger.error("没有可用通道 , 无法交易 >> "+map);
         }
 
         // 通道验证是否可用 , 返回可用的通道
         Integer downBusiId = passageValid(downMchBusiInfo, map);
-
         if (-1 == downBusiId) {
             routingMap.put("status", "FAIL");
             routingMap.put("message", "通道暂时不可用 , 无法交易");
@@ -70,7 +73,7 @@ public class DownRoutingService {
         DateTime date = DateUtil.date();
         int hour = DateUtil.hour(date, true);
         int minute = DateUtil.minute(date);
-        System.out.println("24 小时格式当前时间 >> " + hour + "时 " + minute + "分");
+        //System.out.println("24 小时格式当前时间 >> " + hour + "时 " + minute + "分");
         // 将时分合并成一个
         double currentTime = Double.parseDouble(hour + "." + minute);
 
@@ -79,9 +82,9 @@ public class DownRoutingService {
         double closeTime = Double.parseDouble(downMchBusiInfo.getClose_time());
 
         if (openTime > currentTime || currentTime > closeTime) {
-            Console.error("通道未到开启时间 , 暂时无法交易");
             map.put("status", "FAIL");
             map.put("message", "通道未到开启时间 , 暂时无法交易");
+            logger.error("通道未到开启时间 , 暂时无法交易 >> "+downMchBusiInfo);
             return -1;
         }
 
@@ -92,9 +95,9 @@ public class DownRoutingService {
         int totalFee = Integer.parseInt(map.get("total_fee"));
 
         if (minAmount > totalFee || totalFee > maxAmount) {
-            Console.error("金额大小有误 , 无法交易");
             map.put("status", "FAIL");
             map.put("message", "金额大小有误 , 无法交易");
+            logger.error("金额大小有误 , 无法交易 >> "+downMchBusiInfo);
             return -1;
         }
         // 将符合的通道加入到集合中

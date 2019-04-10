@@ -7,6 +7,8 @@ import com.shangfudata.easypay.dao.*;
 import com.shangfudata.easypay.entity.*;
 import com.shangfudata.easypay.service.SubmitService;
 import com.shangfudata.easypay.util.SignUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
@@ -26,6 +28,8 @@ public class SubmitServiceImpl implements SubmitService {
     @Autowired
     UpMchInfoRepository upMchInfoRepository;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
     String methodUrl = "http://192.168.88.65:8888/gate/epay/epsubmit";
     //String signKey = "00000000000000000000000000000000";
 
@@ -36,11 +40,20 @@ public class SubmitServiceImpl implements SubmitService {
         String out_trade_no = (String)sumbitInfoToMap.get("out_trade_no");
         // 获取上游商户信息
         EasypayInfo easypayInfo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
-        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(easypayInfo.getMch_id());
+        UpMchInfo upMchInfo = upMchInfoRepository.findByMchId(easypayInfo.getMch_id());
+
         // 获取 nonce_str sign_key
         sumbitInfoToMap.replace("nonce_str", easypayInfo.getNonce_str());
         sumbitInfoToMap.put("sign", SignUtils.sign(sumbitInfoToMap, upMchInfo.getSign_key()));
+
+        //String responseInfo = HttpUtil.post(methodUrl, sumbitInfoToMap, 12000);
+        //发送请求
+        logger.info("向上请求提交...");
         String responseInfo = HttpUtil.post(methodUrl, sumbitInfoToMap, 12000);
+        if(null == responseInfo){
+            logger.error("向上请求提交失败");
+        }
+        logger.info("向上请求提交成功："+responseInfo);
 
         EasypayInfo response = gson.fromJson(responseInfo, EasypayInfo.class);
 
@@ -71,6 +84,7 @@ public class SubmitServiceImpl implements SubmitService {
      *
      */
     public void distribution(EasypayInfo easypayInfo) {
+        logger.info("清分计算信息："+easypayInfo);
         //通过路由给的上下游两个商户业务 id 查询数据库 .
         DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(easypayInfo.getDown_busi_id());
         UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(easypayInfo.getUp_busi_id());
@@ -118,6 +132,7 @@ public class SubmitServiceImpl implements SubmitService {
         distributionInfo.setUp_charge(final_up_charge.toString());
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
+        logger.info("清分结果："+distributionInfo);
 
         //存数据库
         distributionInfoRepository.save(distributionInfo);

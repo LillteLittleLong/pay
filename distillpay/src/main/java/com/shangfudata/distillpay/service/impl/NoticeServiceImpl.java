@@ -8,9 +8,12 @@ import com.shangfudata.distillpay.entity.DistillpayInfo;
 import com.shangfudata.distillpay.entity.DownSpInfo;
 import com.shangfudata.distillpay.service.NoticeService;
 import com.shangfudata.distillpay.util.RSAUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -23,6 +26,9 @@ public class NoticeServiceImpl implements NoticeService {
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
+
     @Override
     public void notice(DistillpayInfo distillpayInfo) {
         Gson gson = new Gson();
@@ -31,13 +37,17 @@ public class NoticeServiceImpl implements NoticeService {
         String down_sp_id = distillpayInfo.getDown_sp_id();
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
 
+        RSAPublicKey rsaPublicKey = null;
         RSAPrivateKey rsaPrivateKey = null;
-        try{
+        try {
+            //获取公钥
+            String down_pub_key = downSpInfo.get().getDown_pub_key();
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
             //获取私钥
             String my_pri_key = downSpInfo.get().getMy_pri_key();
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
-        }catch(Exception e){
-            // TODO: 2019/4/8 设置异常状态
+        } catch (Exception e) {
+            logger.error("向下通知信息获取密钥失败："+e);
         }
 
         Map map = new HashMap();
@@ -57,16 +67,22 @@ public class NoticeServiceImpl implements NoticeService {
         String s = gson.toJson(map);
         map.put("sign",RSAUtils.sign(s,rsaPrivateKey));
         String responseInfoJson = gson.toJson(map);
+        logger.info("向下通知信息："+responseInfoJson);
 
-        // 通知计数
-        int count = 0;
         // 通知结果
-        String body = HttpUtil.post(distillpayInfo.getNotify_url(), responseInfoJson, 10000);
-
-        while(!(body.equals("SUCCESS")) && count != 5){
+        String body = null;
+        try {
             body = HttpUtil.post(distillpayInfo.getNotify_url(), responseInfoJson, 10000);
-            count++;
+            if (null == body && !(body.equals("SUCCESS"))){
+                logger.info("未收到响应，持续通知五次...");
+                for (int count = 0;count < 5 ; count++){
+                    HttpUtil.post(distillpayInfo.getNotify_url(), responseInfoJson, 10000);
+                }
+            }
+        }catch (Exception e){
+            logger.error("向下发送通知失败："+e);
         }
+
         String notice_status = "true";
         distillpayInfoRespository.updateNoticeStatus(notice_status,distillpayInfo.getOut_trade_no());
 

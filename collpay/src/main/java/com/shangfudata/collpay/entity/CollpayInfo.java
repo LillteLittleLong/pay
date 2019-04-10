@@ -92,4 +92,12 @@ public class CollpayInfo implements Serializable {
     private String notice_status;
     @Column(length = 32)
     private String notify_url;
+
+    /**
+     * 上游通道号 , 下游通道号
+     */
+    @Column
+    private String down_busi_id;
+    @Column
+    private String up_busi_id;
 }

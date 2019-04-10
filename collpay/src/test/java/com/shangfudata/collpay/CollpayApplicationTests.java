@@ -51,7 +51,7 @@ public class CollpayApplicationTests {
         reqMap.put("down_mch_id", "101");
         reqMap.put("out_trade_no", System.currentTimeMillis() + "");
         reqMap.put("body", "test");
-        reqMap.put("total_fee", "3000");
+        reqMap.put("total_fee", "4449");
         reqMap.put("card_type", "CREDIT");
         reqMap.put("card_name", "小鱼仔");
         reqMap.put("card_no", "6222021001134258654");
@@ -94,8 +94,8 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("威锋网");
-        collpayInfo.setTotal_fee("100999");
+        collpayInfo.setBody("维护费");
+        collpayInfo.setTotal_fee("74458");
         collpayInfo.setCard_type("CREDIT");
         collpayInfo.setCard_name( "嘿嘿嘿");
         collpayInfo.setCard_no("6217992900013005868");
@@ -126,7 +126,7 @@ public class CollpayApplicationTests {
         //System.out.println("签名信息"+sign);
 
         String collpayInfoToJson = gson.toJson(collpayInfo);
-        System.out.println("下游信息"+collpayInfoToJson);
+        System.out.println(collpayInfoToJson);
         //String collpay = collpayController.Collpay(collpayInfoToJson);
         //System.out.println(collpay);
     }

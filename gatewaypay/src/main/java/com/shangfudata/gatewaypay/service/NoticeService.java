@@ -6,7 +6,7 @@ import java.util.Map;
 
 public interface NoticeService {
 
-    String Upnotice(Map<String,String> map);
+    void Upnotice(Map<String,String> map);
 
     void ToDown(GatewaypayInfo gatewaypayInfo);
 }

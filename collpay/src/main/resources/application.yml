@@ -8,6 +8,14 @@ spring:
     url: jdbc:mysql://192.168.88.81:3306/shangfudata?serverTimezone=GMT%2B8
     password: 123456
     username: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariPool
+      minimum-idle: 5
+      maximum-pool-size: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: update
@@ -26,3 +34,4 @@ eureka:
   client:
     serviceUrl:
       defaultZone: http://localhost:8500/eureka/
+

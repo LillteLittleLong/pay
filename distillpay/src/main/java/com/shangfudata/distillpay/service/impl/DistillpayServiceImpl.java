@@ -9,8 +9,11 @@ import com.shangfudata.distillpay.eureka.EurekaDistillpayClient;
 import com.shangfudata.distillpay.jms.DistillpaySenderService;
 import com.shangfudata.distillpay.service.DistillpayService;
 import com.shangfudata.distillpay.util.AesUtils;
+import com.shangfudata.distillpay.util.DataValidationUtils;
 import com.shangfudata.distillpay.util.RSAUtils;
 import com.shangfudata.distillpay.util.SignUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
@@ -45,23 +48,24 @@ public class DistillpayServiceImpl implements DistillpayService {
     @Autowired
     UpMchInfoRepository upMchInfoRepository;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
+
     public String downDistillpay(String distillpayInfoToJson) throws Exception{
         //创建一个map装返回信息
-        Map responseMap = new HashMap();
+        Map rsp = new HashMap();
         //创建一个工具类对象
-        //DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
+        DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
         Gson gson = new Gson();
 
         Map map = gson.fromJson(distillpayInfoToJson, Map.class);
 
         //验空
-        //String message = dataValidationUtils.isNullValid(map);
-        //if (!(message.equals(""))) {
-        //    responseMap.put("status", "FAIL");
-        //    responseMap.put("message", message);
-        //    return gson.toJson(responseMap);
-        //}
+        dataValidationUtils.isNullValid(map,rsp);
+        if ("FAIL".equals(rsp.get("status"))) {
+            return gson.toJson(rsp);
+        }
 
         //取签名
         String sign = (String)map.remove("sign");
@@ -72,25 +76,42 @@ public class DistillpayServiceImpl implements DistillpayService {
         String down_sp_id = distillpayInfo.getDown_sp_id();
 
         Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
-        //拿到我自己（平台）的密钥(私钥)
+        if(null == downSpInfo){
+            rsp.put("status", "FAIL");
+            rsp.put("message", "非法机构");
+            logger.error("当前机构非法");
+            return gson.toJson(rsp);
+        }
+
+        //拿到密钥(私钥)
         String my_pri_key = downSpInfo.get().getMy_pri_key();
-        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
-        //拿到下游给的密钥(公钥)
+        RSAPrivateKey rsaPrivateKey = null;
+        //拿到密钥(公钥)
         String down_pub_key = downSpInfo.get().getDown_pub_key();
-        RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        RSAPublicKey rsaPublicKey = null;
+        try {
+            rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        } catch (Exception e) {
+            rsp.put("status", "FAIL");
+            rsp.put("message", "密钥错误");
+            logger.error("获取密钥错误:"+e);
+            return gson.toJson(rsp);
+        }
 
         //公钥验签
         if (RSAUtils.doCheck(s, sign, rsaPublicKey)){
 
             //私钥解密字段
-            downDecoding(distillpayInfo, rsaPrivateKey);
+            downDecoding(distillpayInfo, rsaPrivateKey,rsp);
+            if ("FAIL".equals(rsp.get("status"))) {
+                return gson.toJson(rsp);
+            }
 
-            // 异常处理
-            //dataValidationUtils.processMyException(distillpayInfo , responseMap);
-
-            // 异常处理后判断是否需要返回
-            if("FAIL".equals(responseMap.get("status"))){
-                return gson.toJson(responseMap);
+            // 数据效验
+            dataValidationUtils.processMyException(distillpayInfo, rsp);
+            if ("FAIL".equals(rsp.get("status"))) {
+                return gson.toJson(rsp);
             }
 
             /* ------------------------ 路由分发 ------------------------------ */
@@ -125,6 +146,7 @@ public class DistillpayServiceImpl implements DistillpayService {
 
             // 无异常，保存下游请求信息到数据库
             distillpayInfoRespository.save(distillpayInfo);
+            logger.info("保存下游请求信息到数据库："+distillpayInfo);
 
             // 包装参数
             String DistillpayInfoToJson = gson.toJson(distillpayInfo);
@@ -137,22 +159,23 @@ public class DistillpayServiceImpl implements DistillpayService {
             String upDistillpayInfoJson = gson.toJson(upDistillpayInfoMap);
 
             // 将信息发送到队列中
-            distillpaySenderService.sendMessage("distillpayinfoNotice.test",upDistillpayInfoJson);
+            distillpaySenderService.sendMessage("distillpayinfo.notice",upDistillpayInfoJson);
 
             // 封装响应数据
-            responseMap.put("sp_id",distillpayInfo.getDown_sp_id());
-            responseMap.put("mch_id",distillpayInfo.getDown_mch_id());
-            responseMap.put("status", "SUCCESS");
-            responseMap.put("trade_state", "正在处理中");
+            rsp.put("sp_id",distillpayInfo.getDown_sp_id());
+            rsp.put("mch_id",distillpayInfo.getDown_mch_id());
+            rsp.put("status", "SUCCESS");
+            rsp.put("trade_state", "正在处理中");
 
             //返回响应参数
-            return gson.toJson(responseMap);
+            return gson.toJson(rsp);
         }
 
         //验签失败，直接返回
-        responseMap.put("status", "FAIL");
-        responseMap.put("message", "签名错误");
-        return gson.toJson(responseMap);
+        rsp.put("status", "FAIL");
+        rsp.put("message", "签名错误");
+        logger.error("签名错误");
+        return gson.toJson(rsp);
     }
 
     /**
@@ -165,11 +188,10 @@ public class DistillpayServiceImpl implements DistillpayService {
      * 4.收到响应信息，存入传上来的collpay对象
      * 5.判断，保存数据库
      */
-    @JmsListener(destination = "distillpayinfoNotice.test")
+    @JmsListener(destination = "distillpayinfo.notice")
     public void distillpayToUp(String distillpayInfoToJson){
+        logger.info("队列监听得到的消息："+distillpayInfoToJson);
         Gson gson = new Gson();
-        System.out.println("上游接收请求消息 " + distillpayInfoToJson);
-
         Map distillpayInfoToMap = gson.fromJson(distillpayInfoToJson, Map.class);
 
         // 从 map 中删除并获取两个通道业务 id .
@@ -186,15 +208,24 @@ public class DistillpayServiceImpl implements DistillpayService {
         distillpayInfoToMap.remove("sign");
         distillpayInfoToMap.remove("notify_url");
 
-        // 获取上游商户信息
+        // 查询数据库获取上游商户加密解密信息
         UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(distillpayInfo.getMch_id());
+
         //对上交易信息进行签名
         distillpayInfoToMap.put("sign", SignUtils.sign(distillpayInfoToMap, upMchInfo.getSign_key()));
         //AES加密操作
         upEncoding(distillpayInfoToMap, upMchInfo.getSec_key());
+        logger.info("AES加密后信息"+distillpayInfoToMap);
 
         //发送请求
+        logger.info("向上请求交易...");
         String responseInfo = HttpUtil.post(methodUrl, distillpayInfoToMap, 12000);
+        if(null == responseInfo){
+            logger.error("向上请求交易失败");
+        }
+        logger.info("向上交易成功："+responseInfo);
+
+
         //获取响应信息，并用一个新DistillpayInfo对象装下这些响应信息
         DistillpayInfo response = gson.fromJson(responseInfo, DistillpayInfo.class);
 
@@ -208,7 +239,10 @@ public class DistillpayServiceImpl implements DistillpayService {
         distillpayInfo.setErr_msg(response.getErr_msg());
 
         if("SUCCESS".equals(response.getStatus())){
+            logger.info("上游处理成功信息："+response);
             //将订单信息表存储数据库
+            distillpayInfo.setDown_busi_id(down_busi_id);
+            distillpayInfo.setUp_busi_id(up_busi_id);
             distillpayInfoRespository.save(distillpayInfo);
 
             // 清分参数包装
@@ -219,6 +253,7 @@ public class DistillpayServiceImpl implements DistillpayService {
             //清分
             distribution(distributionMap);
         }else if("FAIL".equals(response.getStatus())){
+            logger.info("上游处理失败信息："+response);
             distillpayInfoRespository.save(distillpayInfo);
         }
     }
@@ -229,10 +264,16 @@ public class DistillpayServiceImpl implements DistillpayService {
      * @param distillpayInfo
      * @param rsaPrivateKey
      */
-    public void downDecoding(DistillpayInfo distillpayInfo, RSAPrivateKey rsaPrivateKey) throws Exception {
-        distillpayInfo.setCard_name(RSAUtils.privateKeyDecrypt(distillpayInfo.getCard_name(), rsaPrivateKey));
-        distillpayInfo.setCard_no(RSAUtils.privateKeyDecrypt(distillpayInfo.getCard_no(), rsaPrivateKey));
-        distillpayInfo.setId_no(RSAUtils.privateKeyDecrypt(distillpayInfo.getId_no(), rsaPrivateKey));
+    public void downDecoding(DistillpayInfo distillpayInfo, RSAPrivateKey rsaPrivateKey,Map rsp)  {
+        try {
+            distillpayInfo.setCard_name(RSAUtils.privateKeyDecrypt(distillpayInfo.getCard_name(), rsaPrivateKey));
+            distillpayInfo.setCard_no(RSAUtils.privateKeyDecrypt(distillpayInfo.getCard_no(), rsaPrivateKey));
+            distillpayInfo.setId_no(RSAUtils.privateKeyDecrypt(distillpayInfo.getId_no(), rsaPrivateKey));
+        } catch (Exception e) {
+            rsp.put("status", "FAIL");
+            rsp.put("message", "密钥错误");
+            logger.error("RSA解密exception:"+e);
+        }
     }
 
     /**
@@ -252,6 +293,7 @@ public class DistillpayServiceImpl implements DistillpayService {
      * @param distillpayInfoMap
      */
     public void distribution(Map<String, String> distillpayInfoMap) {
+        logger.info("清分计算信息："+distillpayInfoMap);
         //通过路由给的上下游两个商户业务 id 查询数据库 .
         DownMchBusiInfo downMchBusiInfo = downMchBusiInfoRepository.getOne(distillpayInfoMap.get("down_busi_id"));
         UpMchBusiInfo upMchBusiInfo = upMchBusiInfoRepository.getOne(distillpayInfoMap.get("up_busi_id"));
@@ -303,6 +345,7 @@ public class DistillpayServiceImpl implements DistillpayService {
         distributionInfo.setUp_charge(final_up_charge.toString());
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
+        logger.info("清分结果："+distributionInfo);
 
         //存数据库
         distributionInfoRepository.save(distributionInfo);

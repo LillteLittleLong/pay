@@ -31,6 +31,16 @@ public interface CollpayInfoRespository extends JpaRepository<CollpayInfo,String
     @Transactional
     @Modifying(clearAutomatically = true)
     @Query("update CollpayInfo c set c.trade_state =?1, c.err_code =?2, c.err_msg =?3 where c.out_trade_no =?4")
+    void updateSuccessTradeState(String TradeState, String errCode, String errMsg, String outTradeNo);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update CollpayInfo c set c.status =?1, c.code =?2, c.message =?3 where c.out_trade_no =?4")
+    void updateFailTradeState(String status, String code, String message, String out_trade_no);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update CollpayInfo c set c.trade_state =?1, c.err_code =?2, c.err_msg =?3 where c.out_trade_no =?4")
     void updateByoutTradeNo(String tradeState, String errCode, String errMsg, String OutTradeNo);
 
     @Transactional

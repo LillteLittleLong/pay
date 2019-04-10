@@ -51,10 +51,10 @@ public class EasypayApplicationTests {
         easypayInfo.setDown_mch_id("101");
 
         easypayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        easypayInfo.setBody("防火墙我");
+        easypayInfo.setBody("服务v部分");
         easypayInfo.setTotal_fee("88888");
         easypayInfo.setCard_type("CREDIT");
-        easypayInfo.setCard_name( "应用");
+        easypayInfo.setCard_name( "分为");
         easypayInfo.setCard_no("6217992900013005868");
         easypayInfo.setId_type("ID_CARD");
         easypayInfo.setId_no("342101196608282018");
@@ -81,9 +81,6 @@ public class EasypayApplicationTests {
 
         //私钥签名
         easypayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
-        /*String sign = easypayInfo.getSign();
-        System.out.println("签名信息"+sign);*/
-
         String easypayInfoToJson = gson.toJson(easypayInfo);
 
         System.out.println(easypayInfoToJson);

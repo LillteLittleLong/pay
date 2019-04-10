@@ -8,6 +8,8 @@ import com.shangfudata.collpay.entity.CollpayInfo;
 import com.shangfudata.collpay.entity.DownSpInfo;
 import com.shangfudata.collpay.service.NoticeService;
 import com.shangfudata.collpay.util.RSAUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.security.interfaces.RSAPrivateKey;
@@ -23,8 +25,12 @@ public class NoticeServiceImpl implements NoticeService {
     @Autowired
     DownSpInfoRespository downSpInfoRespository;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
+
     @Override
     public void notice(CollpayInfo collpayInfo) {
+
         Gson gson = new Gson();
 
         //拿到订单信息中的下游机构号，再拿密钥
@@ -41,7 +47,7 @@ public class NoticeServiceImpl implements NoticeService {
             String my_pri_key = downSpInfo.get().getMy_pri_key();
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
         } catch (Exception e) {
-
+            logger.error("向下通知信息获取密钥失败："+e);
         }
 
         Map map = new HashMap();
@@ -53,6 +59,7 @@ public class NoticeServiceImpl implements NoticeService {
             map.put("err_msg", collpayInfo.getErr_msg());
         } else if ("FAIL".equals(collpayInfo.getStatus())) {
             map.put("status", collpayInfo.getStatus());
+            map.put("trade_state", collpayInfo.getTrade_state());
             map.put("code", collpayInfo.getCode());
             map.put("message", collpayInfo.getMessage());
         }
@@ -61,16 +68,32 @@ public class NoticeServiceImpl implements NoticeService {
         String s = gson.toJson(map);
         map.put("sign", RSAUtils.sign(s, rsaPrivateKey));
         String responseInfoJson = gson.toJson(map);
+        logger.info("向下通知信息："+responseInfoJson);
 
-        // 通知计数
-        int count = 0;
+
         // 通知结果
-        String body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
-
-        while (!(body.equals("SUCCESS")) && count != 5) {
+        String body = null;
+        try {
             body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
-            count++;
+            if (null == body && !(body.equals("SUCCESS"))){
+                logger.info("未收到响应，持续通知五次...");
+                for (int count = 0;count < 5 ; count++){
+                    HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+                }
+            }
+        }catch (Exception e){
+            logger.error("向下发送通知失败："+e);
         }
+
+        /*try {
+            if (null == body && !(body.equals("SUCCESS")));
+            logger.info("未收到响应，持续通知五次...");
+            for (int count = 0;count < 5 ; count++){
+                body = HttpUtil.post(collpayInfo.getNotify_url(), responseInfoJson, 10000);
+            }
+        }catch(Exception e){
+            logger.info("下游通知响应信息错误："+e);
+        }*/
         String notice_status = "true";
         collpayInfoRespository.updateNoticeStatus(notice_status, collpayInfo.getOut_trade_no());
     }
