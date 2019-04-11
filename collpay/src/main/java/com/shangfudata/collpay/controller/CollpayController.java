@@ -4,14 +4,12 @@ import com.shangfudata.collpay.service.impl.CollpayServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-
 @RestController
 @RequestMapping("/collpay")
 public class CollpayController {
 
     @Autowired
     CollpayServiceImpl collpayService;
-
 
     /**
      * 对下开放请求内部处理接口
@@ -24,10 +22,6 @@ public class CollpayController {
     public String Collpay(@RequestBody String CollpayInfoToJson) throws Exception{
         System.out.println("接收了请求 > " + CollpayInfoToJson);
         return collpayService.downCollpay(CollpayInfoToJson);
-
     }
-
-
-
 
 }

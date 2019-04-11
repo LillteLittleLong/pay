@@ -25,6 +25,9 @@ public interface CollpayInfoRespository extends JpaRepository<CollpayInfo,String
     @Query("select c from CollpayInfo c where c.out_trade_no =?1")
     CollpayInfo findByOutTradeNo(String OutTradeNo);
 
+    @Query("select c from CollpayInfo c where c.ch_trade_no =?1")
+    CollpayInfo findByChTradeNo(String chTraceNo);
+
     /*@Query("update CollpayInfo c set c.notice_status =?1 where c.out_trade_no =?2")
     void updateNoticeStatus(String NoticeStatus,String OutTradeNo);*/
 

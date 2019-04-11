@@ -12,7 +12,6 @@ import java.io.Serializable;
  * 需要传递给上游的参数
  */
 
-
 @Entity
 @Data
 public class CollpayInfo implements Serializable {
@@ -92,4 +91,17 @@ public class CollpayInfo implements Serializable {
     private String notice_status;
     @Column(length = 32)
     private String notify_url;
+
+    /**
+     * 对账状态
+     */
+    @Column
+    private String recon_status;
+
+    /**
+     * 交易时间
+     */
+    @Column
+    private String trade_time;
+
 }

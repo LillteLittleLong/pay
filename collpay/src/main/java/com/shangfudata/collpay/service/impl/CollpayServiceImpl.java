@@ -16,10 +16,11 @@ import com.shangfudata.collpay.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +51,8 @@ public class CollpayServiceImpl implements CollpayService {
     DistributionInfoRespository distributionInfoRespository;
     @Autowired
     UpRoutingInfoRepository upRoutingInfoRepository;
+    @Autowired
+    SysReconInfoRepository sysReconInfoRepository;
 
     private String methodUrl = "http://testapi.shangfudata.com/gate/cp/collpay";
 
@@ -217,6 +220,9 @@ public class CollpayServiceImpl implements CollpayService {
         collpayInfo.setErr_msg(response.getErr_msg());
 
         if ("SUCCESS".equals(response.getStatus())) {
+            // 设置交易时间
+            String tradeTime = new SimpleDateFormat("YYYYMMDDHHmmSS").format(new Date());
+            collpayInfo.setTrade_time(tradeTime);
             //将订单信息表存储数据库
             collpayInfoRespository.save(collpayInfo);
 
@@ -323,6 +329,21 @@ public class CollpayServiceImpl implements CollpayService {
         distributionInfo.setProfit(profit.toString());
         distributionInfo.setTrad_amount(Total_fee.toString());
 
+        SysReconciliationInfo sysReconciliationInfo = new SysReconciliationInfo();
+        sysReconciliationInfo.setSys_check_id(System.currentTimeMillis() + "");
+        sysReconciliationInfo.setTrade_time(byOutTradeNo.getTrade_time());
+        sysReconciliationInfo.setTrade_state(byOutTradeNo.getTrade_state());
+        sysReconciliationInfo.setTotal_fee(byOutTradeNo.getTotal_fee());
+        sysReconciliationInfo.setHand_fee(distributionInfo.getUp_charge());
+        sysReconciliationInfo.setTrade_type("CP_PAY");
+        sysReconciliationInfo.setSp_trade_no(byOutTradeNo.getOut_trade_no());
+        sysReconciliationInfo.setTrade_no(byOutTradeNo.getCh_trade_no());
+        sysReconciliationInfo.setDown_sp_id(byOutTradeNo.getDown_sp_id());
+        sysReconciliationInfo.setDown_mch_id(byOutTradeNo.getDown_mch_id());
+        sysReconciliationInfo.setDown_charge(distributionInfo.getDown_charge());
+
+        // 保存系统对账信息
+        sysReconInfoRepository.save(sysReconciliationInfo);
         //存数据库
         distributionInfoRespository.save(distributionInfo);
     }

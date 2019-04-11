@@ -3,9 +3,11 @@ package com.shangfudata.collpay.service.impl;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.dao.CollpayInfoRespository;
+import com.shangfudata.collpay.dao.SysReconInfoRepository;
 import com.shangfudata.collpay.dao.UpMchInfoRepository;
 import com.shangfudata.collpay.entity.CollpayInfo;
 import com.shangfudata.collpay.entity.QueryInfo;
+import com.shangfudata.collpay.entity.SysReconciliationInfo;
 import com.shangfudata.collpay.entity.UpMchInfo;
 import com.shangfudata.collpay.service.NoticeService;
 import com.shangfudata.collpay.service.QueryService;
@@ -24,6 +26,8 @@ public class QueryServiceImpl implements QueryService {
     @Autowired
     CollpayInfoRespository collpayInfoRespository;
     @Autowired
+    SysReconInfoRepository sysReconInfoRepository;
+    @Autowired
     UpMchInfoRepository upMchInfoRepository;
     @Autowired
     NoticeService noticeService;
@@ -32,7 +36,7 @@ public class QueryServiceImpl implements QueryService {
      * 向上查询（轮询方法）
      */
     @Scheduled(cron = "*/60 * * * * ?")
-    public void queryToUp() throws Exception {
+    public void queryToUp() {
         Gson gson = new Gson();
 
         //查询所有交易状态为PROCESSING的订单信息
@@ -73,6 +77,8 @@ public class QueryServiceImpl implements QueryService {
 
                     //根据订单号，更新数据库交易信息表
                     collpayInfoRespository.updateByoutTradeNo(trade_state, err_code, err_msg, out_trade_no);
+                    // 当上游订单交易状态发生改变的时候改变对账表对应的内容
+                    sysReconInfoRepository.updateByOutTradeNo(trade_state , out_trade_no);
                     //发送通知
                     noticeService.notice(collpayInfoRespository.findByOutTradeNo(out_trade_no));
                 }

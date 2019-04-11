@@ -39,4 +39,9 @@ public class UpMchBusiInfo {
     @Column
     private String sp_id;           // 商户所属通道id
 
+    // TODO: 2019/4/10 添加服务收费标准 , 需要更改清分费用方法 ; 或者不添加收费标准 , 将利润收费标准更改为两利润总和
+    //@Column
+    //private String extra_rate;          // 服务收费标准
+    //@Column
+    //private String extra_min_fee;       // 服务最低收费
 }

@@ -1,7 +1,6 @@
 package com.shangfudata.collpay.entity;
 
 import lombok.Data;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -31,6 +30,5 @@ public class DistributionInfo {
     private String profit;              // '利润(下游手续费-上游手续费)',
     @Column
     private String trad_amount;         // '交易金额',
-
 
 }

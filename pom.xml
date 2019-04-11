@@ -22,6 +22,7 @@
         <module>distillpay</module>
         <module>gatewaypay</module>
         <module>routing</module>
+        <module>reconciliation</module>
     </modules>
 
     <properties>

@@ -54,23 +54,51 @@ public class UpRoutingService {
         // 获得了响应结果
         String spId = upRoutingInfo.getSp_id();
 
-        List<UpMchBusiInfo> upMchBusiInfo;
+        List<UpMchBusiInfo> upMchBusiInfo = null;
+        List<List<UpMchBusiInfo>> lists = new ArrayList<>();
 
         if (spId.equals("*")) {
             System.out.println("上游走 * 号通道");
             upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(mch_id, passage);
-        } else if (Pattern.matches("[A-Z]" , spId)) {
-            System.out.println("上游走 " + spId + " 等级通道");
-            upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(spId, mch_id, passage);
+        } else if (Pattern.matches("[A-Z]", spId)) {
+            // 查询判断添加
+            // 获取 passage_level 当前等级下的所有通道
+            boolean bol = true;
+            while (bol) {
+                System.out.println("上游走 " + spId + " 等级通道");
+                upMchBusiInfo = upMchBusiInfoRepository.queryMchPassageByLevel(spId, mch_id, passage);
+                if (0 != upMchBusiInfo.size()) { // 当查询到有数据时添加到集合中 , 没有则退出循环
+                    lists.add(upMchBusiInfo);
+                    spId = (char) (spId.charAt(0) + 1) + "";
+                    System.out.println("当前等级为 > " + spId);
+                    continue;
+                }
+                bol = false;
+            }
         } else {
             // 查询某个通道
             System.out.println("上游走单一通道");
             upMchBusiInfo = upMchBusiInfoRepository.queryMchPassage(spId, mch_id, passage);
         }
 
-        List<UpMchBusiInfo> upMchBusiInfos = passageValid(upMchBusiInfo, map);
+        List<UpMchBusiInfo> upMchBusiInfos = null;
 
-        if (0 == upMchBusiInfos.size()) {
+        if (lists.size() > 0) {
+            for (List<UpMchBusiInfo> list : lists) {
+                upMchBusiInfos = passageValid(list, map);
+                if (upMchBusiInfos.size() == 0) {
+                    continue;
+                }
+                break;
+            }
+        } else {
+            // 获取可用通道
+            upMchBusiInfos = passageValid(upMchBusiInfo, map);
+            System.out.println("获取到了所用通道 >> " + upMchBusiInfos);
+        }
+
+        // 当没有可用通道
+        if (0 == upMchBusiInfos.size() || null == upMchBusiInfo) {
             Console.error("上游没有可用通道 , 无法交易");
             routingMap.put("status", "FAIL");
             routingMap.put("message", "没有可用通道 , 无法交易");
@@ -78,7 +106,6 @@ public class UpRoutingService {
         } else if (1 < upMchBusiInfos.size()) { // 如果有多个通道 , 返回利润最高的通道
             return passageChooseOne(upMchBusiInfos, map);
         }
-
         return upMchBusiInfos.get(0).getUp_busi_id();
     }
 
@@ -89,6 +116,7 @@ public class UpRoutingService {
      * @param map
      */
     public List<UpMchBusiInfo> passageValid(List<UpMchBusiInfo> upMchBusiInfo, Map<String, String> map) {
+        System.out.println("通道 >> " + upMchBusiInfo);
         // 符合通道的对象
         List<UpMchBusiInfo> mchBusiInfos = new ArrayList<>();
 

@@ -100,7 +100,7 @@ public class EasypayApplicationTests {
         EasypayInfo easypayInfo = new EasypayInfo();
         easypayInfo.setSp_id("1000");
         easypayInfo.setMch_id("100001000000000001");
-        easypayInfo.setOut_trade_no("1554691446293");
+        easypayInfo.setOut_trade_no("1554866408333");
         easypayInfo.setPassword("123456");
         easypayInfo.setNonce_str("12345678901234567890123456789011");
 
@@ -110,7 +110,6 @@ public class EasypayApplicationTests {
 
         //submitController.Submit(submitInfoToJson);
     }
-
 
     @Test
     public void testQuery(){
