@@ -21,7 +21,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
     @Autowired
     ReconCheckInfoRepository reconCheckInfoRepository;
 
-    @Scheduled(cron = "0 0/2 * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
     @Override
     public void checkReconCollPay() {
         String tradeType = "CP_PAY";
@@ -58,7 +58,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         }
     }
 
-    @Scheduled(cron = "0 0/2 * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
     @Override
     public void checkReconEasyPay() {
         String tradeType = "EPAY";
@@ -95,7 +95,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         }
     }
 
-    @Scheduled(cron = "0 0/2 * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
     @Override
     public void checkReconGateWay() {
         String tradeType = "GATEWAY_PAY";
@@ -132,7 +132,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         }
     }
 
-    @Scheduled(cron = "0 0/2 * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
     @Override
     public void checkReconDistillPay() {
         String tradeType = "DISTILL_PAY";

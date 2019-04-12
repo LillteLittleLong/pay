@@ -12,14 +12,14 @@ public interface UpSpDownLoadFileService {
     /**
      * 下载文件保存为 txt
      */
-    void downloadAndSaveFileTxt(String downloadJson) throws IOException;
+    void downloadAndSaveFileTxt(String downloadJson);
 
 
     /**
      * 解析 txt 文件 , 保存到数据库
      * @param filePath
      */
-    void analysisTxtFile(String filePath) throws IOException;
+    void analysisTxtFile(String filePath);
 
     /**
      * 下载文件保存为 xlsx
@@ -31,6 +31,6 @@ public interface UpSpDownLoadFileService {
      * 解析 xlsx 文件 , 保存到数据库
      * @param filePath
      */
-    void analysisXlsxFile(String filePath) throws IOException;
+    void analysisXlsxFile(String filePath);
 
 }

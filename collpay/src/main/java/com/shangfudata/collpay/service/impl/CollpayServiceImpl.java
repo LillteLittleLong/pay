@@ -373,7 +373,7 @@ public class CollpayServiceImpl implements CollpayService {
         logger.info("清分结果："+distributionInfo);
 
         SysReconciliationInfo sysReconciliationInfo = new SysReconciliationInfo();
-        sysReconciliationInfo.setSys_check_id(System.currentTimeMillis() + "");
+        sysReconciliationInfo.setSp_id(byOutTradeNo.getSp_id());
         sysReconciliationInfo.setTrade_time(byOutTradeNo.getTrade_time());
         sysReconciliationInfo.setTrade_state(byOutTradeNo.getTrade_state());
         sysReconciliationInfo.setTotal_fee(byOutTradeNo.getTotal_fee());

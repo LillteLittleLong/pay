@@ -9,5 +9,5 @@ public interface DownSpDownLoadFileService {
     /**
      * 下游下载系统对账文件
      */
-    String downloadSysFile();
+    String downloadSysFile(String downloadFileJSON);
 }

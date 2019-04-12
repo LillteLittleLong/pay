@@ -29,18 +29,18 @@ public interface SysReconInfoRepository extends JpaRepository<SysReconciliationI
      * @param tradeTime
      * @return
      */
-    @Query("from SysReconciliationInfo as s where s.trade_time like concat(?1 ,'%') and s.down_sp_id = ?2")
-    List<SysReconciliationInfo> findByTradeTimeAndSpId(String tradeTime, String spId);
+    @Query("from SysReconciliationInfo as s where s.trade_time like concat(?1 ,'%') and s.down_sp_id = ?2 and s.recon_state = ?3")
+    List<SysReconciliationInfo> findByTradeTimeAndSpId(String tradeTime, String spId , String reconState);
 
     /**
      * 根据 trade_no 改变 recon_state
      * @param recon_state
      * @param trade_no
      */
-    @Query("update UpReconciliationInfo set recon_state = ?1 where trade_no = ?2")
+    @Query("update SysReconciliationInfo set recon_state = ?1 where trade_no = ?2")
     @Modifying
     @Transactional
-    void updateReconStateByTradeNo(String recon_state, String trade_no);
+    void sysDateReconStateByTradeNo(String recon_state, String trade_no);
 
 
 

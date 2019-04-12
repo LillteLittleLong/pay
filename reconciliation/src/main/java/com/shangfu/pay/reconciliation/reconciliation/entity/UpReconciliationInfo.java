@@ -18,9 +18,14 @@ public class UpReconciliationInfo implements Serializable {
      * 上游机构对账表
      */
 
+    //@Column
+    //private String up_check_id;        // 上游对账 id
+
     @Id
     @Column
-    private String up_check_id;        // 上游对账 id
+    private String trade_no;            // 系统订单号
+    @Column
+    private String sp_trade_no;         // 商户订单号
     @Column
     private String trade_time;          // 交易时间
     @Column
@@ -33,10 +38,6 @@ public class UpReconciliationInfo implements Serializable {
     private String hand_fee;            // 手续费
     @Column
     private String trade_type;          // 交易业务类型
-    @Column
-    private String sp_trade_no;         // 商户订单号
-    @Column
-    private String trade_no;            // 系统订单号
     @Column
     private String recon_state;         // 对账状态
 

@@ -7,6 +7,7 @@ import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
 import com.google.gson.Gson;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
+import com.shangfu.pay.reconciliation.reconciliation.entity.SysReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.UpSpReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.util.SignUtils;
 import org.junit.Test;
@@ -32,10 +33,12 @@ public class ReconciliationApplicationTests {
     @Test
     public void downloadForTxt() {
         Map map = new HashMap();
-        // 获取机构下的所有商户订单
-        map.put("sp_id", "1000");
+        // 系统对账数据请求
+        map.put("down_sp_id", "1001");
+        // 上游对账数据请求
+        //map.put("sp_id", "1000");
         // 指定日期 , 若未指定则使用上一个工作日期作为时间 .
-        map.put("bill_date", "20190411");
+        map.put("bill_date", "20190409");
         map.put("nonce_str", "123456789");
         map.put("sign", SignUtils.sign(map, signKey));
 
@@ -163,6 +166,13 @@ public class ReconciliationApplicationTests {
         //    bufferedWriter.close();
         //    fileWriter.close();
         //}
+    }
+
+    @Test
+    public void test(){
+        Gson gson = new Gson();
+        String s = gson.toJson(new SysReconciliationInfo());
+        System.out.println(s);
     }
 
 }

@@ -40,7 +40,6 @@ public class QueryServiceImpl implements QueryService {
 
     Logger logger = LoggerFactory.getLogger(this.getClass());
 
-
     /**
      * 向上查询（轮询方法）
      */
@@ -205,7 +204,7 @@ public class QueryServiceImpl implements QueryService {
         logger.info("清分结果："+distributionInfo);
 
         SysReconciliationInfo sysReconciliationInfo = new SysReconciliationInfo();
-        sysReconciliationInfo.setSys_check_id(System.currentTimeMillis() + "");
+        sysReconciliationInfo.setSp_id(gatewaypayInfo.getSp_id());
         sysReconciliationInfo.setTrade_time(gatewaypayInfo.getTrade_time());
         sysReconciliationInfo.setTrade_state(gatewaypayInfo.getTrade_state());
         sysReconciliationInfo.setTotal_fee(gatewaypayInfo.getTotal_fee());

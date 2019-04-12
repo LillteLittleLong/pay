@@ -31,6 +31,7 @@ public class DistributionInfo {
     private String profit;              // '利润(下游手续费-上游手续费)',
     @Column
     private String trad_amount;         // '交易金额',
-
+    @Column(length = 32)
+    private String sp_id;                   //上游机构服务商号
 
 }

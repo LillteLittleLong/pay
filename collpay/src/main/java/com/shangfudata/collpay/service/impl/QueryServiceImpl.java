@@ -7,7 +7,6 @@ import com.shangfudata.collpay.dao.SysReconInfoRepository;
 import com.shangfudata.collpay.dao.UpMchInfoRepository;
 import com.shangfudata.collpay.entity.CollpayInfo;
 import com.shangfudata.collpay.entity.QueryInfo;
-import com.shangfudata.collpay.entity.SysReconciliationInfo;
 import com.shangfudata.collpay.entity.UpMchInfo;
 import com.shangfudata.collpay.service.NoticeService;
 import com.shangfudata.collpay.service.QueryService;

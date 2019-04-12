@@ -110,7 +110,6 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
                 // 包装为对象
                 UpSpReconciliationInfo upSpReconciliationInfo = gson.fromJson(gson.toJson(columnMap), UpSpReconciliationInfo.class);
                 UpReconciliationInfo upReconciliationInfo = new UpReconciliationInfo();
-                upReconciliationInfo.setUp_check_id(System.currentTimeMillis() + "");
                 upReconciliationInfo.setSp_id(upSpReconciliationInfo.getSp_id());
                 upReconciliationInfo.setTrade_time(upSpReconciliationInfo.getTrade_time());
                 upReconciliationInfo.setTrade_state(upSpReconciliationInfo.getTrade_state());
@@ -173,7 +172,6 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
             List<UpSpReconciliationInfo> infoList = reader.readAll(UpSpReconciliationInfo.class);
             for (UpSpReconciliationInfo upSpReconciliationInfo : infoList) {
                 UpReconciliationInfo upReconciliationInfo = new UpReconciliationInfo();
-                upReconciliationInfo.setUp_check_id(System.currentTimeMillis() + "");
                 upReconciliationInfo.setTrade_time(upSpReconciliationInfo.getTrade_time());
                 upReconciliationInfo.setTrade_state(upSpReconciliationInfo.getTrade_state());
                 upReconciliationInfo.setTotal_fee(upSpReconciliationInfo.getTotal_fee());

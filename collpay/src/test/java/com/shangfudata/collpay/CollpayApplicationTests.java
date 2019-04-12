@@ -1,9 +1,5 @@
 package com.shangfudata.collpay;
 
-import cn.hutool.core.date.DateUtil;
-import cn.hutool.http.HttpUtil;
-import cn.hutool.poi.excel.ExcelUtil;
-import cn.hutool.poi.excel.ExcelWriter;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.controller.CollpayController;
 import com.shangfudata.collpay.controller.QueryController;
@@ -16,14 +12,12 @@ import com.shangfudata.collpay.entity.DistributionInfo;
 import com.shangfudata.collpay.entity.DownSpInfo;
 import com.shangfudata.collpay.entity.SysReconciliationInfo;
 import com.shangfudata.collpay.util.RSAUtils;
-import com.shangfudata.collpay.util.SignUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import java.io.*;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
@@ -160,7 +154,7 @@ public class CollpayApplicationTests {
                 continue;
             }
             SysReconciliationInfo sysReconciliationInfo = new SysReconciliationInfo();
-            sysReconciliationInfo.setSys_check_id(System.currentTimeMillis() + "");
+            sysReconciliationInfo.setSp_id("1000");
             sysReconciliationInfo.setTrade_time(byOut_trade_no.getTrade_time());
             //sysReconciliationInfo.setTrade_time("20190412105527");
             sysReconciliationInfo.setTrade_state(byOut_trade_no.getTrade_state());

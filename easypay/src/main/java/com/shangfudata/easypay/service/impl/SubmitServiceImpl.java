@@ -152,7 +152,7 @@ public class SubmitServiceImpl implements SubmitService {
         logger.info("清分结果：" + distributionInfo);
 
         SysReconciliationInfo sysReconciliationInfo = new SysReconciliationInfo();
-        sysReconciliationInfo.setSys_check_id(System.currentTimeMillis() + "");
+        sysReconciliationInfo.setSp_id(easypayInfo.getSp_id());
         sysReconciliationInfo.setTrade_time(easypayInfo.getTrade_time());
         sysReconciliationInfo.setTrade_state(easypayInfo.getTrade_state());
         sysReconciliationInfo.setTotal_fee(easypayInfo.getTotal_fee());
