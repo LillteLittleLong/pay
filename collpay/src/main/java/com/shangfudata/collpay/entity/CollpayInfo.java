@@ -1,7 +1,6 @@
 package com.shangfudata.collpay.entity;
 
 import lombok.Data;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -11,6 +10,7 @@ import java.io.Serializable;
 /**
  * 需要传递给上游的参数
  */
+
 
 @Entity
 @Data
@@ -93,10 +93,18 @@ public class CollpayInfo implements Serializable {
     private String notify_url;
 
     /**
-     * 对账状态
+     * 上游通道号 , 下游通道号
      */
     @Column
-    private String recon_status;
+    private String down_busi_id;
+    @Column
+    private String up_busi_id;
+
+    ///**
+    // * 对账状态
+    // */
+    //@Column
+    //private String recon_status;
 
     /**
      * 交易时间

@@ -3,6 +3,8 @@ package com.shangfu.pay.routing.controller;
 import com.google.gson.Gson;
 import com.shangfu.pay.routing.service.DownRoutingService;
 import com.shangfu.pay.routing.service.UpRoutingService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,8 @@ public class CollpayRoutingController {
     @Autowired
     UpRoutingService upRoutingService;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
     /**
      * collpay 下游路由接口
      */
@@ -29,13 +33,12 @@ public class CollpayRoutingController {
     @ResponseBody
     public ResponseEntity<String> collpayDownRouting(String downMchId, String downSpId, String totalFee , String passage) {
         Gson gson = new Gson();
-        System.out.println("进入了 routing 下游接口");
-
         Map<String, String> map = new HashMap();
         map.put("down_mch_id", downMchId);
         map.put("down_sp_id", downSpId);
         map.put("total_fee", totalFee);
         map.put("passage" , passage);
+        logger.info("进入了 routing 下游接口"+map);
         Map routingMap = new HashMap();
         Integer integer = downRoutingService.downRouting(map, routingMap);
 
@@ -51,14 +54,12 @@ public class CollpayRoutingController {
     @ResponseBody
     public ResponseEntity<String> collpayUpRouting(String downSpId, String mchId, String totalFee , String passage) {
         Gson gson = new Gson();
-        System.out.println("进入了 routing 上游接口");
-
         Map<String, String> map = new HashMap();
         map.put("down_sp_id", downSpId);
         map.put("mch_id", mchId);
         map.put("total_fee", totalFee);
         map.put("passage", passage);
-
+        logger.info("进入了 routing 上游接口"+map);
         Map routingMap = new HashMap();
         Integer integer = upRoutingService.upRouting(map, routingMap);
 

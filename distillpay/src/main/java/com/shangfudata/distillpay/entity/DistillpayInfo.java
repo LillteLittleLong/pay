@@ -87,4 +87,18 @@ public class DistillpayInfo implements Serializable {
     @Column
     private String notice_status;           //通知状态
 
+    /**
+     * 上游通道号 , 下游通道号
+     */
+    @Column
+    private String down_busi_id;
+    @Column
+    private String up_busi_id;
+
+    /**
+     * 交易时间
+     */
+    @Column
+    private String trade_time;
+
 }

@@ -10,12 +10,16 @@ import com.shangfudata.gatewaypay.entity.GatewaypayInfo;
 import com.shangfudata.gatewaypay.service.NoticeService;
 import com.shangfudata.gatewaypay.util.RSAUtils;
 import org.apache.activemq.command.ActiveMQQueue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.core.JmsMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -30,31 +34,44 @@ public class NoticeServiceImpl implements NoticeService {
     @Autowired
     JmsMessagingTemplate jmsMessagingTemplate;
 
-    @Override
-    public String Upnotice(Map<String,String> map) {
+    Logger logger = LoggerFactory.getLogger(this.getClass());
 
-        Gson gson = new Gson();
-        String s = gson.toJson(map);
-        System.out.println("上游通知信息："+s);
-        return "SUCCESS";
+    @Override
+    public void Upnotice(Map map) {
+
+        logger.info("上游通知信息："+map);
+        String outTradeNo = (String)map.get("out_trade_no");
+        GatewaypayInfo gatewaypayInfo = gatewaypayInfoRepository.findByOutTradeNo(outTradeNo);
+
+        if(null == gatewaypayInfoRepository.findNoticeStatus(outTradeNo)){
+            // 设置时间
+            gatewaypayInfo.setTrade_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+            gatewaypayInfoRepository.save(gatewaypayInfo);
+            ToDown(gatewaypayInfo);
+        }
+
     }
 
     @Override
     public void ToDown(GatewaypayInfo gatewaypayInfo){
+        logger.info("向下发送通知");
         Gson gson = new Gson();
 
         //拿到订单信息中的下游机构号，再拿密钥
         String down_sp_id = gatewaypayInfo.getDown_sp_id();
         Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
 
+        RSAPublicKey rsaPublicKey = null;
         RSAPrivateKey rsaPrivateKey = null;
-        try{
+        try {
+            //获取公钥
+            String down_pub_key = downSpInfo.get().getDown_pub_key();
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
             //获取私钥
             String my_pri_key = downSpInfo.get().getMy_pri_key();
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
-        }catch(Exception e){
-            // TODO: 2019/4/8 异常处理
-
+        } catch (Exception e) {
+            logger.error("向下通知信息获取密钥失败："+e);
         }
 
         Map map = new HashMap();
@@ -74,18 +91,23 @@ public class NoticeServiceImpl implements NoticeService {
         String s = gson.toJson(map);
         map.put("sign", RSAUtils.sign(s,rsaPrivateKey));
         String responseInfoJson = gson.toJson(map);
+        logger.info("向下通知信息："+responseInfoJson);
 
-        // 通知计数
-        int count = 0;
         // 通知结果
-        String body = HttpUtil.post(gatewaypayInfo.getDown_notify_url(), responseInfoJson, 10000);
-
-        while(!(body.equals("SUCCESS")) && count != 5){
+        String body = null;
+        try {
             body = HttpUtil.post(gatewaypayInfo.getDown_notify_url(), responseInfoJson, 10000);
-            count++;
+            if (null == body && !(body.equals("SUCCESS"))){
+                logger.info("未收到响应，持续通知五次...");
+                for (int count = 0;count < 5 ; count++){
+                    HttpUtil.post(gatewaypayInfo.getDown_notify_url(), responseInfoJson, 10000);
+                }
+            }
+        }catch (Exception e){
+            logger.error("向下发送通知失败："+e);
         }
-        String notice_status = "true";
-        gatewaypayInfoRepository.updateNoticeStatus(notice_status,gatewaypayInfo.getOut_trade_no());
+        String noticeStatus = "true";
+        gatewaypayInfoRepository.updateNoticeStatus(noticeStatus,gatewaypayInfo.getOut_trade_no());
     }
 
 }

@@ -32,4 +32,15 @@ public interface UpReconInfoRepository extends JpaRepository<UpReconciliationInf
     @Transactional
     void updateReconStateByTradeNo(String recon_state, String trade_no);
 
+    /**
+     * 删除某天的所有数据
+     * @param tradeTime
+     */
+    @Query("delete from UpReconciliationInfo e where e.trade_time like concat(?1 , '%')")
+    @Modifying
+    @Transactional
+    void removeByTradeTime(String tradeTime);
+
+    @Query("from UpReconciliationInfo as s where s.trade_no = ?1")
+    UpReconciliationInfo findByChTradeNo(String tradeNo);
 }

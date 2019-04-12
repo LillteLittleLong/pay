@@ -5,6 +5,9 @@ import cn.hutool.http.HttpUtil;
 import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
+import com.google.gson.Gson;
+import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
+import com.shangfu.pay.reconciliation.reconciliation.entity.UpSpReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.util.SignUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,7 +22,7 @@ import java.util.*;
 public class ReconciliationApplicationTests {
 
     @Autowired
-    private UpSpReconciliationInfoRepository upSpReconciliationInfoRepository;
+    private UpReconInfoRepository upReconInfoRepository;
 
     // 对账文件下载地址
     private String methodUrl = "http://testapi.shangfudata.com/gate/spsvr/trade/down";
@@ -32,11 +35,14 @@ public class ReconciliationApplicationTests {
         // 获取机构下的所有商户订单
         map.put("sp_id", "1000");
         // 指定日期 , 若未指定则使用上一个工作日期作为时间 .
-        map.put("bill_date", "20190409");
+        map.put("bill_date", "20190411");
         map.put("nonce_str", "123456789");
         map.put("sign", SignUtils.sign(map, signKey));
 
-        System.out.println("请求信息 > " + map);
+        Gson gson = new Gson();
+        String s = gson.toJson(map);
+
+        System.out.println("请求信息 > " + s);
 
         String post = HttpUtil.post(methodUrl, map);
         System.out.println("响应结果 > " + post);
@@ -125,7 +131,7 @@ public class ReconciliationApplicationTests {
         ExcelReader reader = ExcelUtil.getReader("C:\\Users\\shangfu222\\Desktop\\对账文件\\reconciliation\\xlsx\\2019-04-091554780833212download.xlsx");
         List<UpSpReconciliationInfo> infoList = reader.readAll(UpSpReconciliationInfo.class);
         for (UpSpReconciliationInfo upSpReconciliationInfo : infoList) {
-            upSpReconciliationInfoRepository.save(upSpReconciliationInfo);
+            //upReconInfoRepository.save(upSpReconciliationInfo);
         }
         reader.close();
     }

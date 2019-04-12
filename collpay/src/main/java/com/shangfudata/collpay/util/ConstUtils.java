@@ -1,8 +1,7 @@
 package com.shangfudata.collpay.util;
 
 /**
- * Created by tinlly to 2019/3/28
- * Package for com.shangfudata.collpay.util
+ * 正则相关常量
  */
 public class ConstUtils {
 

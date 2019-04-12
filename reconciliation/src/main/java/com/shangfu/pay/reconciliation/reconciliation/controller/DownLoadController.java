@@ -1,11 +1,8 @@
 package com.shangfu.pay.reconciliation.reconciliation.controller;
 
-import com.shangfu.pay.reconciliation.reconciliation.service.DownLoadFileService;
+import com.shangfu.pay.reconciliation.reconciliation.service.UpSpDownLoadFileService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
@@ -17,12 +14,28 @@ import java.io.IOException;
 public class DownLoadController {
 
     @Autowired
-    DownLoadFileService recontiliationService;
+    UpSpDownLoadFileService upSpDownLoadFileService;
 
-    @PostMapping("/shangfu/pay/reconciliation/download")
+    /**
+     * 从上游下载对账文件
+     *
+     * @throws IOException
+     */
+    @PostMapping(value = "/shangfu/pay/reconciliation/download", produces = "application/json;charset=UTF-8")
     @ResponseBody
-    public void downLoad(@RequestBody String upSpReconciliationInfoJson) throws IOException {
-        recontiliationService.downloadAndSaveFileTxt(upSpReconciliationInfoJson);
+    public void downloadByUpSp(@RequestBody String downloadJson) throws IOException {
+        System.out.println("接收了请求参数 > " + downloadJson);
+        upSpDownLoadFileService.downloadAndSaveFileTxt(downloadJson);
+    }
+
+
+    /**
+     * 下载文件给下游
+     */
+    //@PostMapping("/shangfu/pay/reconciliation/download")
+    @ResponseBody
+    public void downloadToDownSp(@RequestBody String upSpReconciliationInfoJson) {
+
     }
 
 }

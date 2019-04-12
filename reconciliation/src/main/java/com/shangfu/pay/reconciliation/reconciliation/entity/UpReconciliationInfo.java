@@ -4,6 +4,7 @@ import lombok.Data;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import java.io.Serializable;
 
 /**
  * Created by tinlly to 2019/4/10
@@ -11,7 +12,7 @@ import javax.persistence.Id;
  */
 @Data
 @Entity
-public class UpReconciliationInfo {
+public class UpReconciliationInfo implements Serializable {
 
     /**
      * 上游机构对账表
@@ -22,6 +23,8 @@ public class UpReconciliationInfo {
     private String up_check_id;        // 上游对账 id
     @Column
     private String trade_time;          // 交易时间
+    @Column
+    private String sp_id;               // 上游机构号
     @Column
     private String trade_state;         // 交易状态
     @Column

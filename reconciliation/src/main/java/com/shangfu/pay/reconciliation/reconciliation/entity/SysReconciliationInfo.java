@@ -4,6 +4,7 @@ import lombok.Data;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import java.io.Serializable;
 
 /**
  * Created by tinlly to 2019/4/10
@@ -12,7 +13,7 @@ import javax.persistence.Id;
 
 @Data
 @Entity
-public class SysReconciliationInfo {
+public class SysReconciliationInfo implements Serializable {
 
     /**
      * 系统对账表

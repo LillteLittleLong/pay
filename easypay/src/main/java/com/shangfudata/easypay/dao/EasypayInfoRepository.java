@@ -31,7 +31,12 @@ public interface EasypayInfoRepository extends JpaRepository<EasypayInfo, String
     @Transactional
     @Modifying(clearAutomatically = true)
     @Query("update EasypayInfo e set e.trade_state =?1, e.err_code =?2, e.err_msg =?3 where e.out_trade_no =?4")
-    void updateTradeState(String TradeState, String errCode, String errMsg, String outTradeNo);
+    void updateSuccessTradeState(String TradeState, String errCode, String errMsg, String outTradeNo);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update EasypayInfo e set e.trade_state =?1, e.err_code =?2, e.err_msg =?3 , e.trade_time = ?4 where e.out_trade_no =?5")
+    void updateTradeState(String TradeState, String errCode, String errMsg, String tradeTime, String outTradeNo);
 
     //@Transactional
     //@Modifying(clearAutomatically = true)

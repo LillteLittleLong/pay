@@ -12,9 +12,12 @@ import com.shangfudata.gatewaypay.service.GatewaypayService;
 import com.shangfudata.gatewaypay.util.DataValidationUtils;
 import com.shangfudata.gatewaypay.util.RSAUtils;
 import com.shangfudata.gatewaypay.util.SignUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +43,8 @@ public class GatewaypayServiceImpl implements GatewaypayService {
     @Autowired
     UpMchInfoRepository upMchInfoRepository;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
     /**
      * 对下开放的网关交易
      *
@@ -49,7 +54,7 @@ public class GatewaypayServiceImpl implements GatewaypayService {
      */
     public String downGatewaypay(String gatewaypayInfoToJson) throws Exception {
         //创建一个map装返回信息
-        Map responseMap = new HashMap();
+        Map rsp = new HashMap();
         //创建一个工具类对象
         DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
 
@@ -58,11 +63,9 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         Map map = gson.fromJson(gatewaypayInfoToJson, Map.class);
 
         //验空
-        String message = dataValidationUtils.isNullValid(map);
-        if (!(message.equals(""))) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", message);
-            return gson.toJson(responseMap);
+        dataValidationUtils.isNullValid(map, rsp);
+        if ("FAIL".equals(rsp.get("status"))) {
+            return gson.toJson(rsp);
         }
 
         //取签名
@@ -74,19 +77,30 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         String down_sp_id = gatewaypayInfo.getDown_sp_id();
 
         Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
-        //拿到下游给的密钥(公钥)
+        if(null == downSpInfo){
+            rsp.put("status", "FAIL");
+            rsp.put("message", "非法机构");
+            logger.error("当前机构非法");
+            return gson.toJson(rsp);
+        }
+        //拿到密钥(私钥)
+        String my_pri_key = downSpInfo.get().getMy_pri_key();
+        RSAPrivateKey rsaPrivateKey = null;
+        //拿到密钥(公钥)
         String down_pub_key = downSpInfo.get().getDown_pub_key();
-        RSAPublicKey rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        RSAPublicKey rsaPublicKey = null;
+        try {
+            rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        } catch (Exception e) {
+            rsp.put("status", "FAIL");
+            rsp.put("message", "密钥错误");
+            logger.error("获取密钥错误:"+e);
+            return gson.toJson(rsp);
+        }
 
         //公钥验签
         if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
-            // 异常处理
-            //dataValidationUtils.processMyException(gatewaypayInfo , responseMap);
-
-            // 异常处理后判断是否需要返回
-            //if("FAIL".equals(responseMap.get("status"))){
-            //    return gson.toJson(responseMap);
-            //}
 
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
@@ -129,15 +143,16 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             upGatewaypayInfoMap.put("sp_id", upRoutingInfo.getSp_id());
             String upEasypayInfoJson = gson.toJson(upGatewaypayInfoMap);
 
-            System.out.println("上有请求参数 1 " + upGatewaypayInfoMap);
-            // 无异常，调用向上交易方法
+            //无异常，则调用上游交易方法
+            logger.info("调用上游交易方法："+upEasypayInfoJson);
             return gatewaypayToUp(upEasypayInfoJson);
         }
 
         //验签失败，直接返回
-        responseMap.put("status", "FAIL");
-        responseMap.put("message", "签名错误");
-        return gson.toJson(responseMap);
+        rsp.put("status", "FAIL");
+        rsp.put("message", "签名错误");
+        logger.error("签名错误...");
+        return gson.toJson(rsp);
     }
 
     /**
@@ -148,10 +163,7 @@ public class GatewaypayServiceImpl implements GatewaypayService {
      */
     public String gatewaypayToUp(String gatewaypayInfoToJson) {
         Gson gson = new Gson();
-        System.out.println("上有请求参数 1 " + gatewaypayInfoToJson);
         Map gatewaypayInfoToMap = gson.fromJson(gatewaypayInfoToJson, Map.class);
-
-        System.out.println("：：" + gatewaypayInfoToJson);
 
         // 从 map 中删除并获取两个通道业务 id .
         String down_busi_id = (String) gatewaypayInfoToMap.remove("down_busi_id");
@@ -173,7 +185,11 @@ public class GatewaypayServiceImpl implements GatewaypayService {
         gatewaypayInfoToMap.put("sign", SignUtils.sign(gatewaypayInfoToMap, upMchInfo.getSign_key()));
 
         //发送请求
+        logger.info("向上请求下单...");
         String responseInfo = HttpUtil.post(methodUrl, gatewaypayInfoToMap, 12000);
+        if(null == responseInfo){
+            logger.error("向上请求下单失败");
+        }
 
         //判断是否为html代码块，
         boolean contains = responseInfo.contains("<html>");

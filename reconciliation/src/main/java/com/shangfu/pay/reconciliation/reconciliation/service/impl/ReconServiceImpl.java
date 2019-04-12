@@ -1,18 +1,19 @@
 package com.shangfu.pay.reconciliation.reconciliation.service.impl;
 
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.lang.Console;
+import cn.hutool.http.HttpRequest;
 import com.google.gson.Gson;
 import com.shangfu.pay.reconciliation.reconciliation.dao.SysReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.entity.SysReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.UpReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.ReconciliationService;
+import com.shangfu.pay.reconciliation.reconciliation.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by tinlly to 2019/4/9
@@ -21,69 +22,125 @@ import java.util.*;
 @Service
 public class ReconServiceImpl implements ReconciliationService {
 
+    String methodUrl = "http://localhost:8502/shangfu/pay/reconciliation/download";
+    String signKey = "00000000000000000000000000000000";
+
     @Autowired
     UpReconInfoRepository upReconInfoRepository;
     @Autowired
     SysReconInfoRepository sysReconInfoRepository;
 
     /**
-     * 对账
-     */
-    public void reconciliationInfo(String tradeType) {
-        upReconciliationSys(tradeType);
-        sysReconcilitionUp(tradeType);
-    }
-
-    /**
-     * 1. 获取所有上游对账信息
-     * 2. 以上游对账信息为主对比系统订单
+     * 1. 获取上游某业务对账信息
+     * 2. 获取系统所有对账信息
+     * 3. 以上游对账信息为主开始对账
+     * 另一方有对账信息 , 开始对账
+     * 另一方没有对账信息 , 对账失败
+     * 4. 验证通道是否相同 , 验证商户号是否相同 , 验证机构号是否相同
+     * 验证交易金额是否相同 , 验证手续费是否相同 , 验证交易状态是否相同
      */
     @Override
-    public void upReconciliationSys(String tradeType) {
+    public boolean upReconciliationSys(String tradeType) {
         System.out.println("开始以上游对账表为主比较系统订单表");
+        // 1. 获取上游某通道的对账信息
         List<UpReconciliationInfo> all = upReconInfoRepository.queryUpReconciliationByTradeType(tradeType);
-        for (UpReconciliationInfo upReconciliationInfo : all) {
-            // 以上游订单为主对比系统订单
-            SysReconciliationInfo sysReconciliationInfo = sysReconInfoRepository.findByChTradeNo(upReconciliationInfo.getTrade_no());
 
-            if (null == sysReconciliationInfo) {
+        if (all.size() == 0) {
+            System.out.println("获取的内容为空 , 对账失败");
+            return false;
+        }
+
+        for (UpReconciliationInfo upReconciliationInfo : all) {
+            // 获取另一方对账信息
+            SysReconciliationInfo sysReconciliationInfo = sysReconInfoRepository.findByChTradeNo(upReconciliationInfo.getTrade_no());
+            // 判断另一方有没有对账信息
+            if (null == sysReconciliationInfo) { // 没有设置对账信息失败
                 upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
-                continue;
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
+            }
+
+            // 另一方信息开始比较
+            /**
+             * 4. 验证通道是否相同 , 验证商户号是否相同 , 验证机构号是否相同
+             *    验证交易金额是否相同 , 验证手续费是否相同 , 验证交易状态是否相同
+             */
+
+            if (!(sysReconciliationInfo.getSp_trade_no().equals(upReconciliationInfo.getSp_trade_no()))) {
+                Console.error("对账错误 : " + upReconciliationInfo.getTrade_no() + " 通道不相同");
+                upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
             }
 
             // 商户通道比较
             if (!(sysReconciliationInfo.getSp_trade_no().equals(upReconciliationInfo.getSp_trade_no()))) {
-                Console.error("不是同一个商户");
+                Console.error("对账错误 : " + upReconciliationInfo.getTrade_no() + " 商户不一样");
                 upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
-                // TODO: 2019/4/10 对账错误处理
-                continue;
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
             }
             // 机构通道比较
             if (!(sysReconciliationInfo.getTrade_no().equals(upReconciliationInfo.getTrade_no()))) {
-                Console.error("不是同一个机构");
+                Console.error("对账错误 : " + upReconciliationInfo.getTrade_no() + " 机构不一样");
                 upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
-                // TODO: 2019/4/10 对账错误处理
-                continue;
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
             }
             // 交易状态比较
             if (!(sysReconciliationInfo.getTrade_state().equals(upReconciliationInfo.getTrade_state()))) {
-                Console.error("金额不对");
+                Console.error("对账错误 : " + upReconciliationInfo.getTrade_no() + " 交易状态不一样");
                 upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
-                // TODO: 2019/4/10 对账错误处理
-                continue;
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
             }
             // 总金额比较
             if (!(sysReconciliationInfo.getTotal_fee().equals(upReconciliationInfo.getTotal_fee()))) {
-                Console.error("金额不对");
+                Console.error("对账错误 : " + upReconciliationInfo.getTrade_no() + " 交易金额不一样");
                 upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
-                // TODO: 2019/4/10 对账错误处理
-                continue;
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
             }
             // TODO: 2019/4/9 利润比较
+            // 手续费比较
+            String sysRecon = sysReconciliationInfo.getHand_fee();
+            String upRecon = upReconciliationInfo.getHand_fee();
 
+            // TODO: 2019/4/11 系统手续费和上游手续费对账处理
+
+            // 对账结果 , 如果对账失败 , 处理失败
+            boolean reconBol = false;
+            if (reconBol) {
+                Console.error("对账错误 : " + upReconciliationInfo.getTrade_no() + " 手续费对账失败");
+                upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
+            }
             // 当对账成功时改变状态
             upReconInfoRepository.updateReconStateByTradeNo("true", upReconciliationInfo.getTrade_no());
         }
+        return true;
     }
 
     /**
@@ -91,123 +148,124 @@ public class ReconServiceImpl implements ReconciliationService {
      * 2. 以系统订单为主对比上游对账信息
      */
     @Override
-    public void sysReconcilitionUp(String tradeType) {
-        // 获取系统对账表某个业务下的所有信息
-        List<SysReconciliationInfo> sysReconciliationInfos = sysReconInfoRepository.querySysReconciliationByTradeType(tradeType);
-        for (SysReconciliationInfo sysReconciliationInfo : sysReconciliationInfos) {
-            // 获取上游对账表某个业务下的所有信息
-            List<UpReconciliationInfo> upReconciliationInfos = upReconInfoRepository.queryUpReconciliationByTradeType(tradeType);
-
-            for (UpReconciliationInfo upReconciliationInfo : upReconciliationInfos) {
-                // 找到相同的对账信息 , 找到后比较
-                if(sysReconciliationInfo.getTrade_no().equals(upReconciliationInfo.getTrade_no())){
-                    // 商户通道比较
-                    if (!(sysReconciliationInfo.getSp_trade_no()).equals(upReconciliationInfo.getSp_trade_no())) {
-                        Console.error("不是同一个商户");
-                        sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
-                        // TODO: 2019/4/10 对账错误处理
-                        continue;
-                    }
-                    // 交易状态比较
-                    if (!(sysReconciliationInfo.getTrade_state().equals(upReconciliationInfo.getTrade_state()))) {
-                        Console.error("金额不对");
-                        sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
-                        // TODO: 2019/4/10 对账错误处理
-                        continue;
-                    }
-                    // 总金额比较
-                    if (!(sysReconciliationInfo.getTotal_fee().equals(upReconciliationInfo.getTotal_fee()))) {
-                        Console.error("金额不对");
-                        sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
-                        // TODO: 2019/4/10 对账错误处理
-                        continue;
-                    }
-
-                    // TODO: 2019/4/9 利润比较
-                    if (!(sysReconciliationInfo.getHand_fee().equals(upReconciliationInfo.getHand_fee()))) {
-                        sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
-                        // TODO: 2019/4/10 对账错误处理
-                        continue;
-                    }
-                    // 当对账成功时改变状态
-                    sysReconInfoRepository.updateReconStateByTradeNo("true", sysReconciliationInfo.getTrade_no());
-                }
-                // 当另一张表中没有对账数据时
-                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
-            }
-        }
-    }
-
-    /**
-     * 系统下载下游对账文件
-     */
-    @Override
-    public String downloadSysFile() {
-        // TODO: 2019/4/10 签名验证 , 数据效验
-
-        // TODO: 2019/4/10 添加时间筛选功能
-        // 时间
-        String trade_time = "2019040901620148";
-        // 下游机构号
-        String down_sp_id = "1001";
-
-        // TODO: 2019/4/10 设置时间字段缺省默认值
-        String tradeTime;
-        // 如果时间字段为空
-        if (trade_time == null) {
-            // 设置默认时间为当天前一天
-            Calendar calendar = Calendar.getInstance();
-            calendar.add(Calendar.DATE, -1); //得到前一天
-            Date date = calendar.getTime();
-            tradeTime = new SimpleDateFormat("YYYYMMdd").format(date);
-        } else { // 时间字段不为空处理内容
-            tradeTime = trade_time.substring(0, 8);
-        }
-        System.out.println("处理后的字符串 > " + tradeTime);
-        // 获取某个机构某天的对账信息
-        List<SysReconciliationInfo> sysReconciliationInfos = sysReconInfoRepository.findByTradeTimeAndSpId(tradeTime, down_sp_id);
+    public boolean sysReconciliationUp(String tradeType) {
+        System.out.println("开始以系统对账表为主比较上游订单表");
+        // 获取系统某业务的对账信息
+        List<SysReconciliationInfo> sysReconciliationInfos = sysReconInfoRepository.queryUpReconciliationByTradeType(tradeType);
 
         if (sysReconciliationInfos.size() == 0) {
-            return "没有数据";
+            System.out.println("获取的内容为空 , 对账失败");
+            return false;
         }
 
-        // 将对账解析为字符串
-        Gson gson = new Gson();
-        StringBuilder columnsBuilder = new StringBuilder();
-        // 获取列名 , 将列名添加进字符串
-        SysReconciliationInfo sysReconciliationInfo = sysReconciliationInfos.get(0);
-        Map map = gson.fromJson(gson.toJson(sysReconciliationInfo), Map.class);
-        // 去掉 sys_check_id 和 recon_state
-        map.remove("trade_no");
-        map.remove("sys_check_id");
-        map.remove("recon_state");
-        ArrayList<String> objects = CollectionUtil.newArrayList(map.keySet().iterator());
-        // 添加 column 值
-        for (int index = 0; index < objects.size(); index++) {
-            columnsBuilder.append(objects.get(index));
-            // 如果 recon_state
-            if (objects.get(index).equals("recon_state")) {
-                continue;
+        for (SysReconciliationInfo sysReconciliationInfo : sysReconciliationInfos) {
+            // 获取另一方对账信息
+            UpReconciliationInfo upReconciliationInfo = upReconInfoRepository.findByChTradeNo(sysReconciliationInfo.getTrade_no());
+            // 判断另一方有没有对账信息
+            if (null == upReconciliationInfo) { // 没有设置对账信息失败
+                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
             }
-            if (index != objects.size() - 1) {
-                columnsBuilder.append(",");
+
+            // 另一方游信息开始比较
+            /**
+             * 4. 验证通道是否相同 , 验证商户号是否相同 , 验证机构号是否相同
+             *    验证交易金额是否相同 , 验证手续费是否相同 , 验证交易状态是否相同
+             */
+
+            if (!(sysReconciliationInfo.getSp_trade_no().equals(upReconciliationInfo.getSp_trade_no()))) {
+                Console.error("对账错误 : " + sysReconciliationInfo.getTrade_no() + " 通道不相同");
+                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
             }
-        }
-        columnsBuilder.append("\n");
 
-        // 通过对象添加内容
-        for (SysReconciliationInfo reconciliationInfo : sysReconciliationInfos) {
-            columnsBuilder.append(reconciliationInfo.getTrade_time()).append(",");
-            columnsBuilder.append(reconciliationInfo.getTrade_state()).append(",");
-            columnsBuilder.append(reconciliationInfo.getTotal_fee()).append(",");
-            columnsBuilder.append(reconciliationInfo.getHand_fee()).append(",");
-            columnsBuilder.append(reconciliationInfo.getTrade_type()).append(",");
-            columnsBuilder.append(reconciliationInfo.getSp_trade_no()).append(",");
-            columnsBuilder.append(reconciliationInfo.getDown_mch_id()).append(",");
-            columnsBuilder.append(reconciliationInfo.getDown_sp_id()).append(",");
-            columnsBuilder.append(reconciliationInfo.getDown_charge()).append("\n");
-        }
+            // 商户通道比较
+            if (!(sysReconciliationInfo.getSp_trade_no().equals(upReconciliationInfo.getSp_trade_no()))) {
+                Console.error("对账错误 : " + sysReconciliationInfo.getTrade_no() + " 商户不一样");
+                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
+            }
+            // 机构通道比较
+            if (!(sysReconciliationInfo.getTrade_no().equals(upReconciliationInfo.getTrade_no()))) {
+                Console.error("对账错误 : " + sysReconciliationInfo.getTrade_no() + " 机构不一样");
+                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
+            }
+            // 交易状态比较
+            if (!(sysReconciliationInfo.getTrade_state().equals(upReconciliationInfo.getTrade_state()))) {
+                Console.error("对账错误 : " + sysReconciliationInfo.getTrade_no() + " 交易状态不一样");
+                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
+            }
+            // 总金额比较
+            if (!(sysReconciliationInfo.getTotal_fee().equals(upReconciliationInfo.getTotal_fee()))) {
+                Console.error("对账错误 : " + sysReconciliationInfo.getTrade_no() + " 交易金额不一样");
+                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
+            }
+            // TODO: 2019/4/9 利润比较
+            // 手续费比较
+            String sysRecon = sysReconciliationInfo.getHand_fee();
+            String upRecon = upReconciliationInfo.getHand_fee();
 
-        return columnsBuilder.toString();
+            // TODO: 2019/4/11 系统手续费和上游手续费对账处理
+
+            // 对账结果 , 如果对账失败 , 处理失败
+            boolean reconBol = false;
+            if (reconBol) {
+                Console.error("对账错误 : " + sysReconciliationInfo.getTrade_no() + " 手续费对账失败");
+                sysReconInfoRepository.updateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
+                // 对账错误 , 删除数据表
+                upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time());
+                // 对账错误处理
+                checkErrProcess(upReconciliationInfo);
+                return false;
+            }
+            // 当对账成功时改变状态
+            sysReconInfoRepository.updateReconStateByTradeNo("true", sysReconciliationInfo.getTrade_no());
+        }
+        return true;
     }
+
+    public void checkErrProcess(UpReconciliationInfo upReconciliationInfo) {
+        System.out.println("对账失败 , 重新从上游获取内容 , 保存至本地");
+        Gson gson = new Gson();
+        // 重新获取接口内容
+        Map map = new HashMap();
+        map.put("sp_id", upReconciliationInfo.getSp_id());
+        map.put("bill_date", upReconciliationInfo.getTrade_time().substring(0, 8));
+        map.put("nonce_str", "123456789");
+        map.put("sign", SignUtils.sign(map, signKey));
+
+        // 通过调用本地对账接口 , 向上游获取内容并保存至本地
+        //HttpUtil.post(methodUrl, map, 100000);
+
+        String requestMap = gson.toJson(map);
+        HttpRequest.post(methodUrl).body(requestMap).execute();
+    }
+
 }

@@ -103,4 +103,10 @@ public class EasypayInfo implements Serializable {
     @Column
     private String up_busi_id;
 
+    /**
+     * 交易时间
+     */
+    @Column
+    private String trade_time;
+
 }

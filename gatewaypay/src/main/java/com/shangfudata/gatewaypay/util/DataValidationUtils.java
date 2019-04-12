@@ -3,7 +3,10 @@ package com.shangfudata.gatewaypay.util;
 
 import com.shangfudata.gatewaypay.entity.GatewaypayInfo;
 import com.shangfudata.gatewaypay.exception.MyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,112 +21,176 @@ public class DataValidationUtils {
         return dataValidationUtils = new DataValidationUtils();
     }
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
+
     /**
-     * 判断是否为空
+     * 字段是否存在
      */
-    public String isNullValid(Map<String, String> map) {
-        for (Map.Entry<String, String> stringStringEntry : map.entrySet()) {
-            try {
-                isNullValid(stringStringEntry.getValue());
-            } catch (NullPointerException e) {
-                return stringStringEntry.getKey() + "不能为空";
+    public Map<String,String> isNullValid(Map<String, String> map,Map rsp) {
+
+        //Map<String,String> rsp = new HashMap<>();
+
+        if(map.containsKey("down_sp_id")){
+            if(isEmpty(map.get("down_sp_id"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[sp_id]不能为空");
+                logger.error("值为空:sp_id"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[sp_id]必填");
+            logger.error("字段为空:sp_id"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("down_mch_id")){
+            if(isEmpty(map.get("down_sp_id"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[sp_id]不能为空");
+                logger.error("值为空:sp_id"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[mch_id]必填");
+            logger.error("字段为空:mch_id"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("out_trade_no")){
+            if(isEmpty(map.get("out_trade_no"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[out_trade_no]不能为空");
+                logger.error("值为空:out_trade_no"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[out_trade_no]必填");
+            logger.error("字段为空:out_trade_no"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("body")){
+            if(isEmpty(map.get("body"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[body]不能为空");
+                logger.error("值为空:body"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[body]必填");
+            logger.error("字段为空:body"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("total_fee")){
+            if(isEmpty(map.get("total_fee"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[total_fee]不能为空");
+                logger.error("值为空:total_fee"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[total_fee]必填");
+            logger.error("字段为空:total_fee"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("notify_url")){
+            if(isEmpty(map.get("notify_url"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[notify_url]不能为空");
+                logger.error("值为空:notify_url"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[notify_url]必填");
+            logger.error("字段为空:notify_url"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("card_type")){
+            if(isEmpty(map.get("card_type"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[card_type]不能为空");
+                logger.error("值为空:card_type"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[card_type]必填");
+            logger.error("字段为空:card_type"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("bank_code")){
+            if(isEmpty(map.get("bank_code"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[bank_code]不能为空");
+                logger.error("值为空:bank_code"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[bank_code]必填");
+            logger.error("字段为空:bank_code"+rsp);
+            return rsp;
+        }
+
+        if(map.containsKey("nonce_str")){
+            if(isEmpty(map.get("nonce_str"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[nonce_str]不能为空");
+                logger.error("值为空:nonce_str"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[nonce_str]必填");
+            logger.error("字段为空:nonce_str"+rsp);
+            return rsp;
+        }
+        if(map.containsKey("sign")){
+            if(isEmpty(map.get("sign"))){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "参数值[sign]不能为空");
+                logger.error("值为空:sign"+rsp);
+                return rsp;
+            }
+        }else{
+            rsp.put("status", "FAIL");
+            rsp.put("message", "参数[sign]必填");
+            logger.error("字段为空:sign"+rsp);
+            return rsp;
+        }
+        return rsp;
+    }
+    /**
+     * 参数的值是否为空判断
+     */
+    public static boolean isEmpty(Object obj) {
+        if (obj == null) {
+            return true;
+        }
+        if (obj instanceof String) {
+            if ("".equals(obj.toString().trim())) {
+                return true;
             }
         }
-        return "";
-    }
-
-
-    /**
-     * 为空判断
-     */
-    public DataValidationUtils isNullValid(String string) throws NullPointerException {
-        // string 判断为空
-        if ("".equals(string) || null == string) {
-            throw new NullPointerException();
+        if (obj instanceof List) {
+            List list = (List) obj;
+            if (list.size() == 0) {
+                return true;
+            }
         }
-        return this.dataValidationUtils;
+        if (obj instanceof Map) {
+            Map map = (Map) obj;
+            if (map.size() == 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    /**
-     * 卡类型效验
-     */
-    public DataValidationUtils cardTypeValid(String cardType, String cvv2, String cardValidData) throws MyException.CardTypeError, MyException.CreditParamIsNullException {
-        switch (cardType) {
-            case MyException.CardType.CREDIT:
-                // 若为贷记卡
-                if (cvv2.trim().equals("")) {
-                    throw new MyException.CreditParamIsNullException();
-                }
-                if (cardValidData.trim().equals("")) {
-                    throw new MyException.CreditParamIsNullException();
-                }
-                break;
-            // 若为借记卡
-            case MyException.CardType.DEBIT:
-                break;
-            default:
-                throw new MyException.CardTypeError();
-                // 卡类型错误
-        }
-        return this.dataValidationUtils;
-    }
-
-    /**
-     * 证件类型效验
-     */
-    public DataValidationUtils cardValid(String idType, String idNo) throws MyException.IDTypeLengthException, MyException.IDTypeError {
-        // id card 验证
-        switch (idType) {
-            case MyException.IDType.ID_CARD:
-                // 证件验证
-                if (!(RegexUtils.isIDCard18(idNo))) {
-                    System.out.println("身份证验证错误");
-                    // 不为银行卡号
-                    throw new MyException.IDTypeLengthException();
-                }
-                break;
-            default:
-                // 证件类型错误
-                throw new MyException.IDTypeError();
-        }
-        return this.dataValidationUtils;
-    }
-
-    /**
-     * 持卡人姓名效验
-     */
-    public DataValidationUtils cardHolderNameValid(String cardHolderName) throws MyException.CardNameException {
-        // 持卡人姓名长度小于 2 并且不为中文时抛出异常
-        if (cardHolderName.length() < 2 || !RegexUtils.isZh(cardHolderName)) {
-            // 持卡人姓名错误
-            throw new MyException.CardNameException();
-        }
-        return this.dataValidationUtils;
-    }
-
-    /**
-     * 校验银行卡卡号
-     *
-     * @return
-     */
-    public DataValidationUtils bankCardValid(String cardNo) throws MyException.BankCardIDException {
-        if (!(RegexUtils.isBankCardNo(cardNo))) {
-            throw new MyException.BankCardIDException();
-        }
-        return this.dataValidationUtils;
-    }
-
-    /**
-     * 手机号效验
-     *
-     * @throws NullPointerException
-     */
-    public DataValidationUtils mobileNumberValid(String bankMobile) throws MyException.NotMobileNumberError {
-        if (!(RegexUtils.isMobileExact(bankMobile))) {
-            throw new MyException.NotMobileNumberError();
-        }
-        return this.dataValidationUtils;
-    }
 
     /**
      * 随机字符串效验
@@ -149,27 +216,6 @@ public class DataValidationUtils {
         } catch (MyException.NonceStrLengthException e) {
             responseMap.put("status", "FAIL");
             responseMap.put("message", "随机字符串长度错误");
-        } catch (MyException.NotMobileNumberError notMobileNumberError) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", "手机号码验证错误");
-        } catch (MyException.CreditParamIsNullException e) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", "贷记卡参数为空");
-        } catch (MyException.CardTypeError cardTypeError) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", "银行卡类型错误");
-        } catch (MyException.IDTypeLengthException e) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", "证件号码错误");
-        } catch (MyException.IDTypeError idTypeError) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", "证件类型错误");
-        } catch (MyException.BankCardIDException e) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", "银行卡号错误");
-        }catch (MyException.CardNameException e) {
-            responseMap.put("status", "FAIL");
-            responseMap.put("message", "持卡人姓名错误");
         }
     }
 }
