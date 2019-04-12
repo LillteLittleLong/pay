@@ -7,6 +7,7 @@ import com.shangfu.pay.reconciliation.reconciliation.service.ReconciliationServi
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 /**
@@ -46,12 +47,14 @@ public class ReconCheckServiceImpl implements ReconCheckService {
                             break;
                         }
                     }
-                    try {
-                        Thread.sleep(10000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        // TODO: 2019/4/11 异常
-                        System.out.println("线程休眠错误");
+                }
+            } else if (null == reconCheckInfo.getSys_check_status()) {
+                // 对比 5 次 , 每次间隔 10 秒钟
+                int index = 5;
+                while (index-- > 0) {
+                    if (checkSysRecon(tradeType)) {
+                        reconCheckInfoRepository.changeSysCheckStatusByReconCheckId("ok", reconCheckInfo.getRecon_check_id());
+                        break;
                     }
                 }
             }
@@ -83,12 +86,14 @@ public class ReconCheckServiceImpl implements ReconCheckService {
                             break;
                         }
                     }
-                    try {
-                        Thread.sleep(10000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        // TODO: 2019/4/11 异常
-                        System.out.println("线程休眠错误");
+                }
+            } else if (null == reconCheckInfo.getSys_check_status()) {
+                // 对比 5 次 , 每次间隔 10 秒钟
+                int index = 5;
+                while (index-- > 0) {
+                    if (checkSysRecon(tradeType)) {
+                        reconCheckInfoRepository.changeSysCheckStatusByReconCheckId("ok", reconCheckInfo.getRecon_check_id());
+                        break;
                     }
                 }
             }
@@ -120,12 +125,14 @@ public class ReconCheckServiceImpl implements ReconCheckService {
                             break;
                         }
                     }
-                    try {
-                        Thread.sleep(10000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        // TODO: 2019/4/11 异常
-                        System.out.println("线程休眠错误");
+                }
+            } else if (null == reconCheckInfo.getSys_check_status()) {
+                // 对比 5 次 , 每次间隔 10 秒钟
+                int index = 5;
+                while (index-- > 0) {
+                    if (checkSysRecon(tradeType)) {
+                        reconCheckInfoRepository.changeSysCheckStatusByReconCheckId("ok", reconCheckInfo.getRecon_check_id());
+                        break;
                     }
                 }
             }
@@ -157,12 +164,14 @@ public class ReconCheckServiceImpl implements ReconCheckService {
                             break;
                         }
                     }
-                    try {
-                        Thread.sleep(10000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        // TODO: 2019/4/11 异常
-                        System.out.println("线程休眠错误");
+                }
+            } else if (null == reconCheckInfo.getSys_check_status()) {
+                // 对比 5 次 , 每次间隔 10 秒钟
+                int index = 5;
+                while (index-- > 0) {
+                    if (checkSysRecon(tradeType)) {
+                        reconCheckInfoRepository.changeSysCheckStatusByReconCheckId("ok", reconCheckInfo.getRecon_check_id());
+                        break;
                     }
                 }
             }
@@ -175,7 +184,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
     @Override
     @Scheduled(cron = "0 0/5 * * * ?") // 每5分钟执行一次
     //@Scheduled(cron = "0 0 0 1/1 * ?") // 每一天执行一次
-    public void clearReconCheck(){
+    public void clearReconCheck() {
         reconCheckInfoRepository.updateReconCheck();
     }
 

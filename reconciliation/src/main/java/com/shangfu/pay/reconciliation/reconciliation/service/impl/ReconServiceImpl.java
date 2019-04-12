@@ -133,16 +133,19 @@ public class ReconServiceImpl implements ReconciliationService {
             String upRecon = upReconciliationInfo.getHand_fee();
 
             // TODO: 2019/4/11 系统手续费和上游手续费对账处理
+            int sysReconInteger = Integer.parseInt(sysRecon);
+            int upReconInteger = Integer.parseInt(upRecon);
 
-            // 对账结果 , 如果对账失败 , 处理失败
-            boolean reconBol = false;
-            if (reconBol) {
-                Console.error("对账错误 : " + upReconciliationInfo.getTrade_no() + " 手续费对账失败");
-                upReconInfoRepository.updateReconStateByTradeNo("false", upReconciliationInfo.getTrade_no());
+            // 上游请求数据内容
+            // 系统利润 - 上游利润
+            // 大于 0 成功 , 小于 0 失败
+            if ((sysReconInteger - upReconInteger) < 0) {
+                Console.error("对账错误 : " + sysReconciliationInfo.getTrade_no() + " 手续费对账失败");
+                sysReconInfoRepository.sysDateReconStateByTradeNo("false", sysReconciliationInfo.getTrade_no());
                 // 对账错误 , 删除数据表
-                 upReconInfoRepository.removeByTradeTime(upReconciliationInfo.getTrade_time().substring(0,8));
+                upReconInfoRepository.removeByTradeTime(sysReconciliationInfo.getTrade_time().substring(0,8));
                 // 对账错误处理
-                checkErrProcess(upReconciliationInfo);
+                checkErrProcess(sysReconciliationInfo);
                 return false;
             }
             // 当对账成功时改变状态
@@ -243,7 +246,6 @@ public class ReconServiceImpl implements ReconciliationService {
             String upRecon = upReconciliationInfo.getHand_fee();
 
             // TODO: 2019/4/11 系统手续费和上游手续费对账处理
-
             int sysReconInteger = Integer.parseInt(sysRecon);
             int upReconInteger = Integer.parseInt(upRecon);
 
