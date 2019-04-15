@@ -99,10 +99,10 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("威锋网");
+        collpayInfo.setBody("活动分区");
         collpayInfo.setTotal_fee("100999");
         collpayInfo.setCard_type("CREDIT");
-        collpayInfo.setCard_name( "嘿嘿嘿");
+        collpayInfo.setCard_name( "哈哈哈");
         collpayInfo.setCard_no("6217992900013005868");
         collpayInfo.setId_type("ID_CARD");
         collpayInfo.setId_no("342101196608282018");

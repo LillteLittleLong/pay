@@ -17,6 +17,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="common" target="1.8" />
       <module name="eureka_server" target="1.8" />
       <module name="notice" target="1.8" />
     </bytecodeTargetLevel>
@@ -31,6 +32,7 @@
       <module name="eureka_server" options="-parameters" />
       <module name="gatewaypay" options="-parameters" />
       <module name="notice" options="-parameters" />
+      <module name="reconciliation" options="-parameters" />
       <module name="routing" options="-parameters" />
     </option>
   </component>

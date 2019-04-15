@@ -13,6 +13,8 @@ import com.shangfu.pay.reconciliation.reconciliation.entity.UpReconciliationInfo
 import com.shangfu.pay.reconciliation.reconciliation.entity.UpSpReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.UpSpDownLoadFileService;
 import com.shangfu.pay.reconciliation.reconciliation.util.SignUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.io.*;
@@ -32,6 +34,9 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
 
     @Autowired
     private UpReconInfoRepository upReconInfoRepository;
+
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
 
     private String methodUrl = "http://testapi.shangfudata.com/gate/spsvr/trade/down";
     private String signKey = "00000000000000000000000000000000";
@@ -61,7 +66,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
 
         // 发送请求 , 得到响应结果
         String responseBody = HttpRequest.post(methodUrl).form(map).execute().body();
-        System.out.println("从上游得到的对账响应数据 > " + responseBody);
+        logger.info("从上游得到的对账响应数据 > " + responseBody);
 
         // TODO: 2019/4/10 验证请求结果
         // TODO: 2019/4/10 if(){}else{}
@@ -76,7 +81,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
             e.printStackTrace();
         }
 
-        System.out.println("保存的文件路径以及文件名 > " + file.toString());
+        logger.info("保存的文件路径以及文件名 > " + file.toString());
         // 执行解析方法
         analysisTxtFile(file.toString());
     }
@@ -119,7 +124,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
                 upReconciliationInfo.setSp_trade_no(upSpReconciliationInfo.getSp_trade_no());
                 upReconciliationInfo.setTrade_no(upSpReconciliationInfo.getTrade_no());
 
-                System.out.println("保存到上游对账表的数据 > " + upReconciliationInfo);
+                logger.info("保存到上游对账表的数据 > " + upReconciliationInfo);
                 // 保存到数据库
                 upReconInfoRepository.save(upReconciliationInfo);
             }
@@ -135,14 +140,14 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
     @Override
     public void downloadAndSaveFileXlsx(String downloadInfoToJson) {
         String post = HttpUtil.post(methodUrl, downloadInfoToJson, 12000);
-        System.out.println("响应结果 >> " + post);
+        logger.info("响应结果 >> " + post);
         File file = new File("C:\\Users\\shangfu222\\Desktop\\对账文件\\reconciliation\\xlsx\\" + DateUtil.formatDate(new Date()) + System.currentTimeMillis() + "download.xlsx");
 
         // 获取 ExcelWriter 对象
         try (ExcelWriter writer = ExcelUtil.getWriter(file)){
             // 解析响应信息 , 保存到本地 xlsx 文件
             String[] split = post.split("\r\n");
-            System.out.println("数组 > " + Arrays.toString(split));
+            logger.info("数组 > " + Arrays.toString(split));
 
             for (int index = 0; index < split.length; index++) {
                 String[] columnMap = split[index].split(",");
@@ -165,7 +170,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
      */
     @Override
     public void analysisXlsxFile(String filePath) {
-        System.err.println("解析 Excel 文件");
+        logger.info("解析 Excel 文件");
         // TODO: 2019/4/9 解析文件
         // 获取 ExcelReader 对象
         try (ExcelReader reader = ExcelUtil.getReader(filePath)){

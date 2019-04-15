@@ -39,7 +39,7 @@ public class QueryServiceImpl implements QueryService {
     /**
      * 向上查询（轮询方法）
      */
-    @Scheduled(cron = "*/60 * * * * ?")
+    @Scheduled(cron = "0 */5 * * * ?")
     public void queryToUp() {
         Gson gson = new Gson();
 

@@ -6,6 +6,8 @@ import com.shangfu.pay.reconciliation.reconciliation.dao.SysReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.entity.SysReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.DownSpDownLoadFileService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.text.SimpleDateFormat;
@@ -23,6 +25,8 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
     @Autowired
     SysReconInfoRepository sysReconInfoRepository;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
     /**
      * 系统下载下游对账文件
      * 下游根据时间获取 对账正确的 系统对账信息
@@ -38,7 +42,7 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
         String nonceStr = (String) downloadFileMap.get("nonce_str");
         String sign = (String) downloadFileMap.get("sign");
 
-        System.out.println("获取了 > " + downloadFileMap);
+        logger.info("获取了 >"+ downloadFileMap);
         // 时间
         //String trade_time = "2019040901620148";
         // 下游机构号
@@ -60,7 +64,7 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
             billDate = billDate.substring(0, 8);
         }
 
-        System.out.println("处理后的字符串 > " + billDate);
+        logger.info("处理后的字符串 > " + billDate);
         // 获取某个机构某天的对账 无误 的信息
         List<SysReconciliationInfo> sysReconciliationInfos = sysReconInfoRepository.findByTradeTimeAndSpId(billDate , downSpId , "true");
 
@@ -104,7 +108,7 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
                 columnsBuilder.append(reconciliationInfo.getDown_charge()).append("\n");
             }
         }
-        System.out.println("拼接字符串内容 > " + columnsBuilder);
+        logger.info("拼接字符串内容 > " + columnsBuilder);
 
         return columnsBuilder.toString();
     }

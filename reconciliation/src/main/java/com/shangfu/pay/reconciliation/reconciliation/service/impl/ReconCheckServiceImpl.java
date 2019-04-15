@@ -4,6 +4,8 @@ import com.shangfu.pay.reconciliation.reconciliation.dao.ReconCheckInfoRepositor
 import com.shangfu.pay.reconciliation.reconciliation.entity.ReconCheckInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.ReconCheckService;
 import com.shangfu.pay.reconciliation.reconciliation.service.ReconciliationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,9 @@ public class ReconCheckServiceImpl implements ReconCheckService {
     @Autowired
     ReconCheckInfoRepository reconCheckInfoRepository;
 
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
+
     @Scheduled(cron = "0/30 * * * * ?")
     @Override
     public void checkReconCollPay() {
@@ -33,7 +38,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         for (ReconCheckInfo reconCheckInfo : reconCheckInfos) {
             // 对账任务没有执行
             if (null == reconCheckInfo.getUp_check_status()) {
-                System.out.println("当前执行 > " + reconCheckInfo);
+                logger.info("当前执行 > " + reconCheckInfo);
 
                 // 对比 5 次 , 每次间隔 10 秒钟
                 int index = 5;
@@ -72,7 +77,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         for (ReconCheckInfo reconCheckInfo : reconCheckInfos) {
             // 对账任务没有执行
             if (null == reconCheckInfo.getUp_check_status()) {
-                System.out.println("当前执行 > " + reconCheckInfo);
+                logger.info("当前执行 > " + reconCheckInfo);
 
                 // 对比 5 次 , 每次间隔 10 秒钟
                 int index = 5;
@@ -100,7 +105,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         }
     }
 
-    @Scheduled(cron = "0/30 * * * * ?")
+    @Scheduled(cron = "0 */5 * * * ?")
     @Override
     public void checkReconGateWay() {
         String tradeType = "GATEWAY_PAY";
@@ -111,7 +116,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         for (ReconCheckInfo reconCheckInfo : reconCheckInfos) {
             // 对账任务没有执行
             if (null == reconCheckInfo.getUp_check_status()) {
-                System.out.println("当前执行 > " + reconCheckInfo);
+                logger.info("当前执行 > " + reconCheckInfo);
 
                 // 对比 5 次 , 每次间隔 10 秒钟
                 int index = 5;
@@ -150,7 +155,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         for (ReconCheckInfo reconCheckInfo : reconCheckInfos) {
             // 对账任务没有执行
             if (null == reconCheckInfo.getUp_check_status()) {
-                System.out.println("当前执行 > " + reconCheckInfo);
+                logger.info("当前执行 > " + reconCheckInfo);
 
                 // 对比 5 次 , 每次间隔 10 秒钟
                 int index = 5;

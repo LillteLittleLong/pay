@@ -2,6 +2,8 @@ package com.shangfu.pay.reconciliation.reconciliation.controller;
 
 import com.shangfu.pay.reconciliation.reconciliation.service.DownSpDownLoadFileService;
 import com.shangfu.pay.reconciliation.reconciliation.service.UpSpDownLoadFileService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/reconciliation")
 public class DownLoadController {
+
+    Logger logger = LoggerFactory.getLogger(this.getClass());
+
 
     @Autowired
     UpSpDownLoadFileService upSpDownLoadFileService;
@@ -24,7 +29,7 @@ public class DownLoadController {
     @PostMapping(value = "/downloadToUp", produces = "application/json;charset=UTF-8")
     @ResponseBody
     public void downloadByUpSp(@RequestBody String downloadJson) {
-        System.out.println("接收了请求参数 > " + downloadJson);
+        logger.info("对账接收请求参数 > " + downloadJson);
         upSpDownLoadFileService.downloadAndSaveFileTxt(downloadJson);
     }
 
