@@ -6,9 +6,11 @@ import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
 import com.google.gson.Gson;
+import com.shangfu.pay.reconciliation.reconciliation.dao.DownSpInfoRespository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
-import com.shangfu.pay.reconciliation.reconciliation.entity.SysReconciliationInfo;
+import com.shangfu.pay.reconciliation.reconciliation.entity.DownSpInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.UpSpReconciliationInfo;
+import com.shangfu.pay.reconciliation.reconciliation.util.RSAUtils;
 import com.shangfu.pay.reconciliation.reconciliation.util.SignUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,12 +18,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 import java.io.*;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class ReconciliationApplicationTests {
 
+    @Autowired
+    DownSpInfoRespository downSpInfoRespository;
     @Autowired
     private UpReconInfoRepository upReconInfoRepository;
 
@@ -30,13 +36,16 @@ public class ReconciliationApplicationTests {
     //private String refMethodUrl = "http://testapi.shangfudata.com/gate/spsvr/rfdtrade/down";
     private String signKey = "00000000000000000000000000000000";
 
+    /**
+     * 获取上游对账数据
+     */
     @Test
-    public void downloadForTxt() {
+    public void downloadForUp() {
         Map map = new HashMap();
         // 系统对账数据请求
-        map.put("down_sp_id", "1001");
+        //map.put("down_sp_id", "1001");
         // 上游对账数据请求
-        //map.put("sp_id", "1000");
+        map.put("sp_id", "1000");
         // 指定日期 , 若未指定则使用上一个工作日期作为时间 .
         map.put("bill_date", "20190409");
         map.put("nonce_str", "123456789");
@@ -49,56 +58,44 @@ public class ReconciliationApplicationTests {
 
         String post = HttpUtil.post(methodUrl, map);
         System.out.println("响应结果 > " + post);
-        //FileWriter fileWriter = null;
-        //BufferedWriter bufferedWriter = null;
-        //// 将上游对账文件写入 txt 文件
-        //try {
-        //    fileWriter = new FileWriter("C:\\Users\\shangfu222\\Desktop\\对账文件\\reconciliation\\txt\\" + DateUtil.formatDate(new Date()) + System.currentTimeMillis() + "download.txt");
-        //    bufferedWriter = new BufferedWriter(fileWriter);
-        //    bufferedWriter.write(post);
-        //    bufferedWriter.flush();
-        //} catch (IOException e) {
-        //    e.printStackTrace();
-        //} finally {
-        //    bufferedWriter.close();
-        //    fileWriter.close();
-        //}
-        //Gson gson = new Gson();
-        //
-        //// 存入多个 Map 的集合
-        //FileReader fileReader = null;
-        //BufferedReader bufferedReader = null;
-        //try {
-        //    // 解析文件
-        //    // 将文件解析为对象
-        //    fileReader = new FileReader("C:\\Users\\shangfu222\\Desktop\\对账文件\\reconciliation\\txt\\2019-04-09download.txt");
-        //    bufferedReader = new BufferedReader(fileReader);
-        //    // 读取第一行 : 列名
-        //    String string = bufferedReader.readLine();
-        //    String[] split = string.split(",");
-        //
-        //    // 存入
-        //    Map columnMap = new HashMap();
-        //    for (int index = 0; index < split.length; index++) {
-        //        columnMap.put(split[index], "");
-        //    }
-        //
-        //    // 列名效验
-        //    while (!((string = bufferedReader.readLine()) == null)) {
-        //        String[] column = string.split(",");
-        //        System.out.println("数组 > " + Arrays.toString(column));
-        //        for (int index = 0; index < column.length; index++) {
-        //            columnMap.put(split[index], column[index]);
-        //        }
-        //        UpSpReconciliationInfo upSpReconciliationInfo = gson.fromJson(gson.toJson(columnMap), UpSpReconciliationInfo.class);
-        //        upSpReconciliationInfoRepository.save(upSpReconciliationInfo);
-        //    }
-        //} catch (IOException e) {
-        //    e.printStackTrace();
-        //} finally {
-        //    bufferedReader.close();
-        //    fileReader.close();
-        //}
+    }
+
+    /**
+     * 推送系统对账数据
+     */
+    @Test
+    public void downloadForDown() throws Exception {
+        Gson gson = new Gson();
+
+        DownSpInfo downSpInfo = downSpInfoRespository.findBySpId("1001");
+        System.out.println(" >>> 签名 " + downSpInfo);
+
+        //拿到密钥(私钥)
+        String my_pri_key = downSpInfo.getDown_pri_key();
+        RSAPrivateKey rsaPrivateKey;
+        //拿到密钥(公钥)
+        String down_pub_key = downSpInfo.getDown_pub_key();
+        RSAPublicKey rsaPublicKey = null;
+
+        rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+        rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+
+        Map map = new HashMap();
+        // 系统对账数据请求
+        map.put("down_sp_id", "1001");
+        // 上游对账数据请求
+        //map.put("sp_id", "1000");
+        // 指定日期 , 若未指定则使用上一个工作日期作为时间 .
+        map.put("bill_date", "20190409");
+        map.put("nonce_str", "123456789");
+        String s1 = gson.toJson(map);
+        System.out.println("签名串 >>>> " + s1);
+        map.put("sign", RSAUtils.sign(s1,rsaPrivateKey));
+
+        String s = gson.toJson(map);
+
+        String post = HttpUtil.post("http://localhost:8502/reconciliation/downloadToDown", s);
+        System.out.println("响应结果 > " + post);
     }
 
     @Test
@@ -166,13 +163,6 @@ public class ReconciliationApplicationTests {
         //    bufferedWriter.close();
         //    fileWriter.close();
         //}
-    }
-
-    @Test
-    public void test(){
-        Gson gson = new Gson();
-        String s = gson.toJson(new SysReconciliationInfo());
-        System.out.println(s);
     }
 
 }

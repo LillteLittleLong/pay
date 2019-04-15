@@ -44,10 +44,10 @@ public class SysReconciliationInfo implements Serializable {
     private String down_sp_id;          // 下游机构号
     @Column
     private String down_mch_id;         // 下游商户号
-    @Column
-    private String down_charge;         // 下游手续费
+    //@Column
+    //private String down_charge;         // 下游手续费
     @Column(length = 32)
-    private String sp_id;                   //上游机构服务商号
+    private String sp_id;                   //上游机构服务商号(系统对账失败时 , 用来获取上游对账信息)
 
     public void initNull(){
         this.trade_no = "";
@@ -60,7 +60,7 @@ public class SysReconciliationInfo implements Serializable {
         this.recon_state = "";
         this.down_sp_id = "";
         this.down_mch_id = "";
-        this.down_charge = "";
+        //this.down_charge = "";
         this.sp_id = "";
     }
 

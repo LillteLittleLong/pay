@@ -61,7 +61,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         }
     }
 
-    @Scheduled(cron = "0/30 * * * * ?")
+    //@Scheduled(cron = "0/30 * * * * ?")
     @Override
     public void checkReconEasyPay() {
         String tradeType = "EPAY";
@@ -100,7 +100,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         }
     }
 
-    @Scheduled(cron = "0/30 * * * * ?")
+    //@Scheduled(cron = "0/30 * * * * ?")
     @Override
     public void checkReconGateWay() {
         String tradeType = "GATEWAY_PAY";

@@ -31,6 +31,8 @@ public class UpReconciliationInfo implements Serializable {
     @Column
     private String sp_id;               // 上游机构号
     @Column
+    private String mch_id;              // 上有商户号
+    @Column
     private String trade_state;         // 交易状态
     @Column
     private String total_fee;           // 交易金额

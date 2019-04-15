@@ -8,11 +8,11 @@ import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
 import com.google.gson.Gson;
+import com.shangfu.pay.reconciliation.reconciliation.dao.UpMchInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.entity.UpReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.UpSpReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.UpSpDownLoadFileService;
-import com.shangfu.pay.reconciliation.reconciliation.util.SignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.io.*;
@@ -32,10 +32,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
 
     @Autowired
     private UpReconInfoRepository upReconInfoRepository;
-
     private String methodUrl = "http://testapi.shangfudata.com/gate/spsvr/trade/down";
-    private String signKey = "00000000000000000000000000000000";
-
 
     /**
      * 从上游获取请求文件 , 保存到本地 txt 格式文件 .
@@ -43,28 +40,30 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
     @Override
     public void downloadAndSaveFileTxt(String downloadJson) {
         // TODO: 2019/4/10 数据效验
-        // TODO: 2019/4/10 if(){}else{}
 
         Gson gson = new Gson();
         Map map = gson.fromJson(downloadJson, Map.class);
 
-        Object bill_date = map.get("bill_date");
-        if(null == bill_date && bill_date.equals("")){
-            Date date=new Date();
+        String bill_date = (String)map.get("bill_date");
+        if (null == bill_date && bill_date.equals("")) {
+            Date date = new Date();
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(date);
             calendar.add(calendar.DATE, -1);
             date = calendar.getTime();
             String tradeTime = new SimpleDateFormat("yyyyMMdd").format(date);
-            map.put("bill_date" , tradeTime);
+            map.put("bill_date", tradeTime);
         }
 
         // 发送请求 , 得到响应结果
         String responseBody = HttpRequest.post(methodUrl).form(map).execute().body();
         System.out.println("从上游得到的对账响应数据 > " + responseBody);
 
-        // TODO: 2019/4/10 验证请求结果
-        // TODO: 2019/4/10 if(){}else{}
+        // TODO: 2019/4/12 方法加强
+        // 如果请求失败 , 不执行方法
+        if (responseBody.length() < 10) {
+            return;
+        }
 
         // 将请求结果持久化到本地
         File file = new File("C:\\Users\\shangfu222\\Desktop\\对账文件\\reconciliation\\txt\\" + DateUtil.formatDate(new Date()) + System.currentTimeMillis() + "download.txt");
@@ -109,8 +108,15 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
                 }
                 // 包装为对象
                 UpSpReconciliationInfo upSpReconciliationInfo = gson.fromJson(gson.toJson(columnMap), UpSpReconciliationInfo.class);
+
+                // 排除 CP_PAY 以及 DISTILL_PAY 以外的业务
+                if (!(upSpReconciliationInfo.getTrade_type().equals("CP_PAY") || upSpReconciliationInfo.getTrade_type().equals("DISTILL_PAY"))) {
+                    return;
+                }
+
                 UpReconciliationInfo upReconciliationInfo = new UpReconciliationInfo();
                 upReconciliationInfo.setSp_id(upSpReconciliationInfo.getSp_id());
+                upReconciliationInfo.setMch_id(upSpReconciliationInfo.getMcht_no());
                 upReconciliationInfo.setTrade_time(upSpReconciliationInfo.getTrade_time());
                 upReconciliationInfo.setTrade_state(upSpReconciliationInfo.getTrade_state());
                 upReconciliationInfo.setTotal_fee(upSpReconciliationInfo.getTotal_fee());
@@ -130,6 +136,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
 
     /**
      * 从上游获取请求文件 , 保存到本地 xlsx 格式文件 .
+     *
      * @param downloadInfoToJson
      */
     @Override
@@ -139,7 +146,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
         File file = new File("C:\\Users\\shangfu222\\Desktop\\对账文件\\reconciliation\\xlsx\\" + DateUtil.formatDate(new Date()) + System.currentTimeMillis() + "download.xlsx");
 
         // 获取 ExcelWriter 对象
-        try (ExcelWriter writer = ExcelUtil.getWriter(file)){
+        try (ExcelWriter writer = ExcelUtil.getWriter(file)) {
             // 解析响应信息 , 保存到本地 xlsx 文件
             String[] split = post.split("\r\n");
             System.out.println("数组 > " + Arrays.toString(split));
@@ -161,6 +168,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
 
     /**
      * 解析本地 xlsx 文件 , 保存到数据库
+     *
      * @param filePath
      */
     @Override
@@ -168,7 +176,7 @@ public class UpSpDownLoadFileServiceImpl implements UpSpDownLoadFileService {
         System.err.println("解析 Excel 文件");
         // TODO: 2019/4/9 解析文件
         // 获取 ExcelReader 对象
-        try (ExcelReader reader = ExcelUtil.getReader(filePath)){
+        try (ExcelReader reader = ExcelUtil.getReader(filePath)) {
             List<UpSpReconciliationInfo> infoList = reader.readAll(UpSpReconciliationInfo.class);
             for (UpSpReconciliationInfo upSpReconciliationInfo : infoList) {
                 UpReconciliationInfo upReconciliationInfo = new UpReconciliationInfo();
