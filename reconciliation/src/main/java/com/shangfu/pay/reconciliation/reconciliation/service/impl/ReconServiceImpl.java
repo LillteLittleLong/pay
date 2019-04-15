@@ -4,8 +4,10 @@ import cn.hutool.core.lang.Console;
 import cn.hutool.http.HttpRequest;
 import com.google.gson.Gson;
 import com.shangfu.pay.reconciliation.reconciliation.dao.SysReconInfoRepository;
+import com.shangfu.pay.reconciliation.reconciliation.dao.UpMchInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.entity.SysReconciliationInfo;
+import com.shangfu.pay.reconciliation.reconciliation.entity.UpMchInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.UpReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.ReconciliationService;
 import com.shangfu.pay.reconciliation.reconciliation.util.SignUtils;
@@ -28,18 +30,13 @@ public class ReconServiceImpl implements ReconciliationService {
     String signKey = "00000000000000000000000000000000";
 
     @Autowired
+    UpMchInfoRepository upMchInfoRepository;
+    @Autowired
     UpReconInfoRepository upReconInfoRepository;
     @Autowired
     SysReconInfoRepository sysReconInfoRepository;
 
     Logger logger = LoggerFactory.getLogger(this.getClass());
-
-
-    //@Scheduled(cron = "0/60 * * * * *")
-    //public void taskTest(){
-    //    upReconciliationSys("CP_PAY");
-    //    sysReconciliationUp("CP_PAY");
-    //}
 
     /**
      * 1. 获取上游某业务对账信息
@@ -134,9 +131,8 @@ public class ReconServiceImpl implements ReconciliationService {
                 checkErrProcess(upReconciliationInfo);
                 return false;
             }
-            // TODO: 2019/4/9 利润比较
-            // 手续费比较
 
+            // 手续费比较
             String sysRecon = sysReconciliationInfo.getHand_fee();
             String upRecon = upReconciliationInfo.getHand_fee();
 
@@ -283,6 +279,7 @@ public class ReconServiceImpl implements ReconciliationService {
         map.put("sp_id", sysReconciliationInfo.getSp_id());
         map.put("bill_date", sysReconciliationInfo.getTrade_time().substring(0, 8));
         map.put("nonce_str", "123456789");
+        // 使用默认的签名
         map.put("sign", SignUtils.sign(map, signKey));
 
         String requestMap = gson.toJson(map);
@@ -291,13 +288,18 @@ public class ReconServiceImpl implements ReconciliationService {
 
     public void checkErrProcess(UpReconciliationInfo upReconciliationInfo) {
         logger.info("对账失败 , 重新从上游获取内容 , 保存至本地");
+        System.out.println("对账失败 , 重新从上游获取内容 , 保存至本地");
+        // 获取签名
+        UpMchInfo upMchInfo = upMchInfoRepository.queryByMchId(upReconciliationInfo.getMch_id());
+        String sign_key = upMchInfo.getSign_key();
+
         Gson gson = new Gson();
         // 重新获取接口内容
         Map map = new HashMap();
         map.put("sp_id", upReconciliationInfo.getSp_id());
         map.put("bill_date", upReconciliationInfo.getTrade_time().substring(0, 8));
         map.put("nonce_str", "123456789");
-        map.put("sign", SignUtils.sign(map, signKey));
+        map.put("sign", SignUtils.sign(map, sign_key));
 
         String requestMap = gson.toJson(map);
         HttpRequest.post(methodUrl).body(requestMap).execute();

@@ -2,14 +2,18 @@ package com.shangfu.pay.reconciliation.reconciliation.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.google.gson.Gson;
+import com.shangfu.pay.reconciliation.reconciliation.dao.DownSpInfoRespository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.SysReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
+import com.shangfu.pay.reconciliation.reconciliation.entity.DownSpInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.SysReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.DownSpDownLoadFileService;
+import com.shangfu.pay.reconciliation.reconciliation.util.RSAUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.security.interfaces.RSAPublicKey;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -20,6 +24,8 @@ import java.util.*;
 @Service
 public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService {
 
+    @Autowired
+    DownSpInfoRespository downSpInfoRespository;
     @Autowired
     UpReconInfoRepository upReconInfoRepository;
     @Autowired
@@ -40,76 +46,94 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
         String billDate = (String) downloadFileMap.get("bill_date");
         String downSpId = (String) downloadFileMap.get("down_sp_id");
         String nonceStr = (String) downloadFileMap.get("nonce_str");
-        String sign = (String) downloadFileMap.get("sign");
+        //String sign = (String) downloadFileMap.get("sign");
+        String sign = (String) downloadFileMap.remove("sign");
 
-        logger.info("获取了 >"+ downloadFileMap);
-        // 时间
-        //String trade_time = "2019040901620148";
-        // 下游机构号
-        //String down_sp_id = "1001";
+        DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(downSpId);
+        System.out.println(" >>> 签名 " + downSpInfo);
 
-        // TODO: 2019/4/10 签名验证 , 数据效验
-
-
-        // 如果时间字段为空
-        if(billDate == null){
-            // 设置默认时间为当天前一天
-            Calendar calendar = Calendar.getInstance();
-            calendar.add(Calendar.DATE, -1); //得到前一天
-            Date date = calendar.getTime();
-
-            billDate = new SimpleDateFormat("yyyyMMdd").format(date);
-        }else { // 时间字段不为空处理内容
-            downloadFileMap.put("trade_time" , billDate.substring(0, 8));
-            billDate = billDate.substring(0, 8);
+        if (null == downSpInfo) {
+            logger.error("当前机构非法");
+            return "非法机构";
         }
 
-        logger.info("处理后的字符串 > " + billDate);
-        // 获取某个机构某天的对账 无误 的信息
-        List<SysReconciliationInfo> sysReconciliationInfos = sysReconInfoRepository.findByTradeTimeAndSpId(billDate , downSpId , "true");
-
-        // 将对账解析为字符串
-        StringBuilder columnsBuilder = new StringBuilder();
-        // 获取列名 , 将列名添加进字符串
-        SysReconciliationInfo sysReconciliationInfo = new SysReconciliationInfo();
-        sysReconciliationInfo.initNull();
-
-        Map map = gson.fromJson(gson.toJson(sysReconciliationInfo), Map.class);
-        // 去掉 sys_check_id 和 recon_state
-        map.remove("trade_no");
-        map.remove("sys_check_id");
-        map.remove("recon_state");
-        ArrayList objects = CollectionUtil.newArrayList(map.keySet().iterator());
-        // 添加 column 值
-        for (int index = 0; index < objects.size(); index++) {
-            columnsBuilder.append(objects.get(index));
-            // 如果 recon_state
-            if (objects.get(index).equals("recon_state")) {
-                continue;
-            }
-            if (index != objects.size() - 1) {
-                columnsBuilder.append(",");
-            }
+        //拿到密钥(私钥)
+        String my_pri_key = downSpInfo.getMy_pri_key();
+        //RSAPrivateKey rsaPrivateKey = null;
+        //拿到密钥(公钥)
+        String down_pub_key = downSpInfo.getDown_pub_key();
+        RSAPublicKey rsaPublicKey = null;
+        try {
+            //rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        } catch (Exception e) {
+            logger.error("获取密钥错误:" + e);
+            return "密钥错误";
         }
-        columnsBuilder.append("\n");
 
-        // 判断是否有对账数据
-        if (sysReconciliationInfos.size() > 0) {
-            // 通过对象添加内容
-            for (SysReconciliationInfo reconciliationInfo : sysReconciliationInfos) {
-                columnsBuilder.append(reconciliationInfo.getTrade_time()).append(",");
-                columnsBuilder.append(reconciliationInfo.getTrade_state()).append(",");
-                columnsBuilder.append(reconciliationInfo.getTotal_fee()).append(",");
-                columnsBuilder.append(reconciliationInfo.getHand_fee()).append(",");
-                columnsBuilder.append(reconciliationInfo.getTrade_type()).append(",");
-                columnsBuilder.append(reconciliationInfo.getSp_trade_no()).append(",");
-                columnsBuilder.append(reconciliationInfo.getDown_mch_id()).append(",");
-                columnsBuilder.append(reconciliationInfo.getDown_sp_id()).append(",");
-                columnsBuilder.append(reconciliationInfo.getDown_charge()).append("\n");
+        String s = gson.toJson(downloadFileMap);
+        System.out.println("签名串 >>>> " + s);
+
+        //公钥验签
+        if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
+            // TODO: 2019/4/15 数据效验
+            if (billDate == null) { // 如果时间字段为空获取前一天日期
+                Calendar calendar = Calendar.getInstance();
+                calendar.add(Calendar.DATE, -1); //得到前一天
+                Date date = calendar.getTime();
+                billDate = new SimpleDateFormat("yyyyMMdd").format(date);
+            } else { // 时间字段不为空处理内容
+                downloadFileMap.put("trade_time", billDate.substring(0, 8));
+                billDate = billDate.substring(0, 8);
             }
-        }
-        logger.info("拼接字符串内容 > " + columnsBuilder);
 
-        return columnsBuilder.toString();
+            System.out.println("处理后的字符串 > " + billDate);
+            // 获取某个机构某天的对账 无误 的信息
+            List<SysReconciliationInfo> sysReconciliationInfos = sysReconInfoRepository.findByTradeTimeAndSpId(billDate, downSpId, "true");
+
+            // 将对账解析为字符串
+            StringBuilder columnsBuilder = new StringBuilder();
+            // 获取列名 , 将列名添加进字符串
+            SysReconciliationInfo sysReconciliationInfo = new SysReconciliationInfo();
+            sysReconciliationInfo.initNull();
+
+            Map map = gson.fromJson(gson.toJson(sysReconciliationInfo), Map.class);
+            // 去掉 sys_check_id 和 recon_state
+            map.remove("trade_no");
+            map.remove("sys_check_id");
+            map.remove("recon_state");
+            ArrayList objects = CollectionUtil.newArrayList(map.keySet().iterator());
+            // 添加 column 值
+            for (int index = 0; index < objects.size(); index++) {
+                columnsBuilder.append(objects.get(index));
+                // 如果 recon_state
+                if (objects.get(index).equals("recon_state")) {
+                    continue;
+                }
+                if (index != objects.size() - 1) {
+                    columnsBuilder.append(",");
+                }
+            }
+            columnsBuilder.append("\n");
+
+            // 判断是否有对账数据
+            if (sysReconciliationInfos.size() > 0) {
+                // 通过对象添加内容
+                for (SysReconciliationInfo reconciliationInfo : sysReconciliationInfos) {
+                    columnsBuilder.append(reconciliationInfo.getTrade_time()).append(",");
+                    columnsBuilder.append(reconciliationInfo.getTrade_state()).append(",");
+                    columnsBuilder.append(reconciliationInfo.getTotal_fee()).append(",");
+                    columnsBuilder.append(reconciliationInfo.getHand_fee()).append(",");
+                    columnsBuilder.append(reconciliationInfo.getTrade_type()).append(",");
+                    columnsBuilder.append(reconciliationInfo.getSp_trade_no()).append(",");
+                    columnsBuilder.append(reconciliationInfo.getDown_mch_id()).append(",");
+                    columnsBuilder.append(reconciliationInfo.getDown_sp_id()).append("\n");
+                }
+            }
+            System.out.println("拼接字符串内容 > " + columnsBuilder);
+
+            return columnsBuilder.toString();
+        }
+        return "签名失败";
     }
 }
