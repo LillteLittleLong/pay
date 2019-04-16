@@ -26,8 +26,8 @@ import java.util.Map;
 @Service
 public class ReconServiceImpl implements ReconciliationService {
 
-    //String methodUrl = "http://localhost:8502/shangfu/pay/reconciliation/download";
-    String methodUrl = "http://testapi.shangfudata.com/gate/spsvr/trade/down";
+    String methodUrl = "http://localhost:8502/reconciliation/downloadToUp";
+//     String methodUrl = "http://testapi.shangfudata.com/gate/spsvr/trade/down";
     String signKey = "00000000000000000000000000000000";
 
     @Autowired

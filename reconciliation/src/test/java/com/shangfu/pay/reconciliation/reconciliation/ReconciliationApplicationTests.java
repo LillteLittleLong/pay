@@ -93,6 +93,7 @@ public class ReconciliationApplicationTests {
         map.put("sign", RSAUtils.sign(s1,rsaPrivateKey));
 
         String s = gson.toJson(map);
+        System.out.println(s);
 
         String post = HttpUtil.post("http://localhost:8502/reconciliation/downloadToDown", s);
         System.out.println("响应结果 > " + post);

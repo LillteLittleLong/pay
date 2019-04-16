@@ -5,9 +5,11 @@ import com.google.gson.Gson;
 import com.shangfu.pay.reconciliation.reconciliation.dao.DownSpInfoRespository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.SysReconInfoRepository;
 import com.shangfu.pay.reconciliation.reconciliation.dao.UpReconInfoRepository;
+import com.shangfu.pay.reconciliation.reconciliation.entity.DownLoadInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.DownSpInfo;
 import com.shangfu.pay.reconciliation.reconciliation.entity.SysReconciliationInfo;
 import com.shangfu.pay.reconciliation.reconciliation.service.DownSpDownLoadFileService;
+import com.shangfu.pay.reconciliation.reconciliation.util.DataValidationUtils;
 import com.shangfu.pay.reconciliation.reconciliation.util.RSAUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,15 +49,33 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
         String downSpId = (String) downloadFileMap.get("down_sp_id");
         String nonceStr = (String) downloadFileMap.get("nonce_str");
         //String sign = (String) downloadFileMap.get("sign");
+
+
+        //创建一个map装返回信息
+        Map<String,String> rsp = new HashMap();
+        //创建一个工具类对象
+        DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
+        //验空
+        dataValidationUtils.isNullValid(downloadFileMap,rsp);
+        if ("FAIL".equals(rsp.get("status"))) {
+            return gson.toJson(rsp);
+        }
+
+
+
+        //用来验签
         String sign = (String) downloadFileMap.remove("sign");
+
 
         DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(downSpId);
         System.out.println(" >>> 签名 " + downSpInfo);
 
+        DownLoadInfo downLoadInfo = gson.fromJson(downloadFileJSON, DownLoadInfo.class);
         if (null == downSpInfo) {
             logger.error("当前机构非法");
             return "非法机构";
         }
+
 
         //拿到密钥(私钥)
         String my_pri_key = downSpInfo.getMy_pri_key();
@@ -76,7 +96,13 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
 
         //公钥验签
         if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
-            // TODO: 2019/4/15 数据效验
+
+            //  数据效验
+            dataValidationUtils.processMyException(downLoadInfo, rsp);
+            if ("FAIL".equals(rsp.get("status"))) {
+                return gson.toJson(rsp);
+            }
+
             if (billDate == null) { // 如果时间字段为空获取前一天日期
                 Calendar calendar = Calendar.getInstance();
                 calendar.add(Calendar.DATE, -1); //得到前一天
@@ -87,7 +113,7 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
                 billDate = billDate.substring(0, 8);
             }
 
-            System.out.println("处理后的字符串 > " + billDate);
+            System.out.println("处理后的日期字符串 > " + billDate);
             // 获取某个机构某天的对账 无误 的信息
             List<SysReconciliationInfo> sysReconciliationInfos = sysReconInfoRepository.findByTradeTimeAndSpId(billDate, downSpId, "true");
 
