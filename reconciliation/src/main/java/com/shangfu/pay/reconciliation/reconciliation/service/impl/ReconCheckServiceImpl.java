@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 /**
@@ -25,7 +24,6 @@ public class ReconCheckServiceImpl implements ReconCheckService {
     ReconCheckInfoRepository reconCheckInfoRepository;
 
     Logger logger = LoggerFactory.getLogger(this.getClass());
-
 
     @Scheduled(cron = "0/30 * * * * ?")
     @Override

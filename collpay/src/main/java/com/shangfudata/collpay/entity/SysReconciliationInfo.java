@@ -44,8 +44,8 @@ public class SysReconciliationInfo implements Serializable {
     private String down_sp_id;          // 下游机构号
     @Column
     private String down_mch_id;         // 下游商户号
-    @Column
-    private String down_charge;         // 下游手续费
+    //@Column
+    //private String down_charge;         // 下游手续费
     @Column
     private String sp_id;               // 上游机构通道
 }

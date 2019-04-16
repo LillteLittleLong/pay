@@ -18,6 +18,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="common" target="1.8" />
+      <module name="demo" target="1.8" />
       <module name="eureka_server" target="1.8" />
       <module name="notice" target="1.8" />
     </bytecodeTargetLevel>

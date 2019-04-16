@@ -47,7 +47,7 @@ public class ReconciliationApplicationTests {
         // 上游对账数据请求
         map.put("sp_id", "1000");
         // 指定日期 , 若未指定则使用上一个工作日期作为时间 .
-        map.put("bill_date", "20190409");
+        map.put("bill_date", "20190416");
         map.put("nonce_str", "123456789");
         map.put("sign", SignUtils.sign(map, signKey));
 
@@ -55,7 +55,7 @@ public class ReconciliationApplicationTests {
         String s = gson.toJson(map);
 
         System.out.println("请求信息 > " + s);
-
+        
         String post = HttpUtil.post(methodUrl, map);
         System.out.println("响应结果 > " + post);
     }
@@ -155,6 +155,7 @@ public class ReconciliationApplicationTests {
         //try {
         //    fileWriter = new FileWriter("C:\\Users\\shangfu222\\Desktop\\对账文件\\reconciliation\\txt\\" + DateUtil.formatDate(new Date()) + System.currentTimeMillis() + "rfdDownload.txt");
         //    bufferedWriter = new BufferedWriter(fileWriter);
+
         //    bufferedWriter.write(post);
         //    bufferedWriter.flush();
         //} catch (IOException e) {

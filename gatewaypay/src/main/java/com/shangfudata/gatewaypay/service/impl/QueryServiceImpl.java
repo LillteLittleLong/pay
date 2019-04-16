@@ -208,13 +208,12 @@ public class QueryServiceImpl implements QueryService {
         sysReconciliationInfo.setTrade_time(gatewaypayInfo.getTrade_time());
         sysReconciliationInfo.setTrade_state(gatewaypayInfo.getTrade_state());
         sysReconciliationInfo.setTotal_fee(gatewaypayInfo.getTotal_fee());
-        sysReconciliationInfo.setHand_fee(distributionInfo.getUp_charge());
+        sysReconciliationInfo.setHand_fee(distributionInfo.getProfit());
         sysReconciliationInfo.setTrade_type("GATEWAY_PAY");
         sysReconciliationInfo.setSp_trade_no(gatewaypayInfo.getOut_trade_no());
         sysReconciliationInfo.setTrade_no(gatewaypayInfo.getCh_trade_no());
         sysReconciliationInfo.setDown_sp_id(gatewaypayInfo.getDown_sp_id());
         sysReconciliationInfo.setDown_mch_id(gatewaypayInfo.getDown_mch_id());
-        sysReconciliationInfo.setDown_charge(distributionInfo.getDown_charge());
 
         // 保存系统对账信息
         sysReconInfoRepository.save(sysReconciliationInfo);

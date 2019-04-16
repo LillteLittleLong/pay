@@ -17,7 +17,6 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
@@ -165,7 +164,6 @@ public class CollpayApplicationTests {
             sysReconciliationInfo.setTrade_no(byOut_trade_no.getCh_trade_no());
             sysReconciliationInfo.setDown_sp_id(byOut_trade_no.getDown_sp_id());
             sysReconciliationInfo.setDown_mch_id(byOut_trade_no.getDown_mch_id());
-            sysReconciliationInfo.setDown_charge(collpayInfo.getDown_charge());
 
             sysReconInfoRepository.save(sysReconciliationInfo);
         }
