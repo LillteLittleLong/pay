@@ -61,8 +61,6 @@ public class DownSpDownLoadFileServiceImpl implements DownSpDownLoadFileService 
             return gson.toJson(rsp);
         }
 
-
-
         //用来验签
         String sign = (String) downloadFileMap.remove("sign");
 
