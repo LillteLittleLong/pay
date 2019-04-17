@@ -67,6 +67,11 @@ public class EasypayApplicationTests {
         easypayInfo.setDown_notify_url("http://192.168.88.188:9001/consumer/notice");
         easypayInfo.setNonce_str("12345678901234567890123456789011");
 
+        //私钥签名
+        Gson gson = new Gson();
+        String s = gson.toJson(easypayInfo);
+        easypayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+
         //公钥加密
         easypayInfo.setCard_name(RSAUtils.publicKeyEncrypt(easypayInfo.getCard_name(), rsaPublicKey));
         easypayInfo.setCard_no(RSAUtils.publicKeyEncrypt(easypayInfo.getCard_no(), rsaPublicKey));
@@ -76,11 +81,6 @@ public class EasypayApplicationTests {
         easypayInfo.setCard_valid_date(RSAUtils.publicKeyEncrypt(easypayInfo.getCard_valid_date(), rsaPublicKey));
 
 
-        Gson gson = new Gson();
-        String s = gson.toJson(easypayInfo);
-
-        //私钥签名
-        easypayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
         String easypayInfoToJson = gson.toJson(easypayInfo);
 
         System.out.println(easypayInfoToJson);
@@ -91,16 +91,23 @@ public class EasypayApplicationTests {
     }
 
     @Test
-    public void testSubmit() {
+    public void testSubmit() throws Exception{
+        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
+
+        //获取私钥
+        String down_pri_key = downSpInfo.get().getDown_pri_key();
+        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
         Gson gson = new Gson();
 
         EasypayInfo easypayInfo = new EasypayInfo();
-        easypayInfo.setSp_id("1000");
-        easypayInfo.setMch_id("100001000000000001");
-        easypayInfo.setOut_trade_no("1554964187778");
+        easypayInfo.setDown_sp_id("1001");
+        easypayInfo.setDown_mch_id("101");
+        easypayInfo.setOut_trade_no("1555492222701");
         easypayInfo.setPassword("123456");
         easypayInfo.setNonce_str("12345678901234567890123456789011");
 
+        String s = gson.toJson(easypayInfo);
+        easypayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
 
         String submitInfoToJson = gson.toJson(easypayInfo);
         System.out.println(submitInfoToJson);
@@ -109,13 +116,24 @@ public class EasypayApplicationTests {
     }
 
     @Test
-    public void testQuery(){
-        EasypayInfo collpayInfo = new EasypayInfo();
-        collpayInfo.setOut_trade_no("1553677712904");
+    public void testQuery() throws Exception{
+        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
+
+        //获取私钥
+        String down_pri_key = downSpInfo.get().getDown_pri_key();
+        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+
+        EasypayInfo easypayInfo = new EasypayInfo();
+        easypayInfo.setDown_sp_id("1001");
+        easypayInfo.setOut_trade_no("1555492222701");
+        easypayInfo.setNonce_str("12345678901234567890123456789011");
+
         Gson gson = new Gson();
-        String s = gson.toJson(collpayInfo);
-        System.out.println(s);
+        String s = gson.toJson(easypayInfo);
+
+        easypayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+
         //String query = queryController.Query(s);
-        //System.out.println(query);
+        System.out.println(gson.toJson(easypayInfo));
     }
 }

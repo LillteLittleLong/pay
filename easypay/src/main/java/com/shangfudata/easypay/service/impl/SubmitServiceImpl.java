@@ -6,14 +6,19 @@ import com.google.gson.Gson;
 import com.shangfudata.easypay.dao.*;
 import com.shangfudata.easypay.entity.*;
 import com.shangfudata.easypay.service.SubmitService;
+import com.shangfudata.easypay.util.RSAUtils;
 import com.shangfudata.easypay.util.SignUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -28,6 +33,8 @@ public class SubmitServiceImpl implements SubmitService {
     @Autowired
     DistributionInfoRepository distributionInfoRepository;
     @Autowired
+    DownSpInfoRepository downSpInfoRespository;
+    @Autowired
     UpMchInfoRepository upMchInfoRepository;
     @Autowired
     SysReconInfoRepository sysReconInfoRepository;
@@ -38,36 +45,109 @@ public class SubmitServiceImpl implements SubmitService {
 
     @Override
     public String submit(String sumbitInfoToJson) {
+        //创建一个map装返回信息
+        Map<String,String> rsp = new HashMap();
+
         Gson gson = new Gson();
-        Map sumbitInfoToMap = gson.fromJson(sumbitInfoToJson, Map.class);
-        String out_trade_no = (String) sumbitInfoToMap.get("out_trade_no");
+
+        Map jsonToMap = gson.fromJson(sumbitInfoToJson, Map.class);
+
         // 获取上游商户信息
-        EasypayInfo easypayInfo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
-        UpMchInfo upMchInfo = upMchInfoRepository.findByMchId(easypayInfo.getMch_id());
+        String sign = (String)jsonToMap.remove("sign");
+        String down_sp_id = (String)jsonToMap.get("down_sp_id");
+        String down_mch_id = (String)jsonToMap.get("down_mch_id");
+        DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(down_sp_id);
+
+        //拿到密钥(公钥)
+        String down_pub_key = downSpInfo.getDown_pub_key();
+        RSAPublicKey rsaPublicKey = null;
+        try {
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        } catch (Exception e) {
+            rsp.put("status", "FAIL");
+            rsp.put("message", "密钥错误");
+            logger.error("获取密钥错误:"+e);
+            return gson.toJson(rsp);
+        }
+        //验签
+        if (RSAUtils.doCheck(gson.toJson(jsonToMap), sign, rsaPublicKey)) {
+            //随机字符串验证
+            String nonce_str = (String)jsonToMap.get("nonce_str");
+            if (!(nonce_str.length() == 32)) {
+                rsp.put("status", "FAIL");
+                rsp.put("message", "[nonce_str]随机字符串长度错误");
+                logger.error("随机字符串长度错误");
+                return gson.toJson(rsp);
+            }
+            EasypayInfo epayInfo = easypayInfoRepository.findByOutTradeNo((String)jsonToMap.get("out_trade_no"));
+            logger.info("查询数据库订单信息："+epayInfo);
+
+            jsonToMap.remove("down_sp_id");
+            jsonToMap.remove("down_mch_id");
+            // 更换签名、机构号、商户号
+            jsonToMap.put("sp_id",epayInfo.getSp_id());
+            jsonToMap.put("mch_id", epayInfo.getMch_id());
+            UpMchInfo upMchInfo = upMchInfoRepository.findByMchId((String)jsonToMap.get("mch_id"));
+
+            jsonToMap.put("sign", SignUtils.sign(jsonToMap, upMchInfo.getSign_key()));
+
+
+            logger.info("向上信息"+jsonToMap);
+            // 发送请求
+            logger.info("向上请求提交订单...");
+            String responseInfo = HttpUtil.post(methodUrl, jsonToMap, 12000);
+            if (null == responseInfo) {
+                logger.error("向上请求提交订单失败");
+            }
+            logger.info("向上请求提交订单成功：" + responseInfo);
+
+            EasypayInfo response = gson.fromJson(responseInfo, EasypayInfo.class);
+
+
+            epayInfo.setTrade_state(response.getTrade_state());
+            epayInfo.setErr_code(response.getErr_code());
+            epayInfo.setErr_msg(response.getErr_msg());
+            epayInfo.setCode(response.getCode());
+            epayInfo.setMessage(response.getMessage());
+
+            // 设置交易时间
+            epayInfo.setTrade_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+            if ("SUCCESS".equals(response.getStatus())) {
+                //将订单信息表存储数据库
+
+                EasypayInfo byOutTradeNo = easypayInfoRepository.save(epayInfo);
+
+                //清分
+                distribution(byOutTradeNo);
+            } else if ("FAIL".equals(response.getStatus())) {
+                easypayInfoRepository.save(epayInfo);
+            }
+            return responseInfo;
+        }
+
+        //验签失败，直接返回
+        rsp.put("status", "FAIL");
+        rsp.put("message", "[sign]签名错误**");
+        logger.error("签名错误");
+        return gson.toJson(rsp);
+
+
 
         // 获取 nonce_str sign_key
-        sumbitInfoToMap.replace("nonce_str", easypayInfo.getNonce_str());
-        sumbitInfoToMap.put("sign", SignUtils.sign(sumbitInfoToMap, upMchInfo.getSign_key()));
+        //sumbitInfoToMap.replace("nonce_str", easypayInfo.getNonce_str());
+        //sumbitInfoToMap.put("sign", SignUtils.sign(sumbitInfoToMap, upMchInfo.getSign_key()));
 
-        //String responseInfo = HttpUtil.post(methodUrl, sumbitInfoToMap, 12000);
         //发送请求
-        logger.info("向上请求提交...");
+        /*logger.info("向上请求提交订单...");
         String responseInfo = HttpUtil.post(methodUrl, sumbitInfoToMap, 12000);
         if (null == responseInfo) {
-            logger.error("向上请求提交失败");
+            logger.error("向上请求提交订单失败");
         }
-        logger.info("向上请求提交成功：" + responseInfo);
+        logger.info("向上请求提交订单成功：" + responseInfo);
 
         EasypayInfo response = gson.fromJson(responseInfo, EasypayInfo.class);
 
         String status = response.getStatus();
-        //成功信息
-        //String trade_state = response.getTrade_state();
-        //String err_code = response.getErr_code();
-        //String err_msg = response.getErr_msg();
-        ////失败信息
-        //String code = response.getCode();
-        //String message = response.getMessage();
 
         EasypayInfo epayInfo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
         epayInfo.setTrade_state(response.getTrade_state());
@@ -80,21 +160,15 @@ public class SubmitServiceImpl implements SubmitService {
         epayInfo.setTrade_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
         if ("SUCCESS".equals(status)) {
             //将订单信息表存储数据库
-            //easypayInfoRepository.updateSuccessTradeState(trade_state, err_code, err_msg, out_trade_no);
-            //easypayInfoRepository.updateTradeState(trade_state, err_code, err_msg, tradeTime, out_trade_no);
 
             EasypayInfo byOutTradeNo = easypayInfoRepository.save(epayInfo);
-
-
-            //EasypayInfo byOutTradeNo = easypayInfoRepository.findByOutTradeNo(out_trade_no);
 
             //清分
             distribution(byOutTradeNo);
         } else if ("FAIL".equals(status)) {
             easypayInfoRepository.save(epayInfo);
-            //easypayInfoRepository.updateFailTradeState(status, code, message, out_trade_no);
         }
-        return responseInfo;
+        return responseInfo;*/
     }
 
     /**

@@ -98,7 +98,7 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("废弃物发");
+        collpayInfo.setBody("分别为");
         collpayInfo.setTotal_fee("100999");
         collpayInfo.setCard_type("CREDIT");
         collpayInfo.setCard_name( "当前");

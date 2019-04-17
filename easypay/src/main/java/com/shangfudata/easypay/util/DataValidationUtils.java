@@ -365,14 +365,14 @@ public class DataValidationUtils {
     /**
      * Easypay 下游请求参数异常处理方法
      */
-    public void processMyException(EasypayInfo easypayInfo, Map responseMap) {
+    public void processMyException(Map<String,String> paramMap, Map responseMap) {
         // 数据效验
         // 异常处理
         try {
-            dataValidationUtils.bankCardValid(easypayInfo.getCard_no()).cardValid(easypayInfo.getId_type(),
-                    easypayInfo.getId_no()).cardTypeValid(easypayInfo.getCard_type(), easypayInfo.getCvv2(),
-                    easypayInfo.getCard_valid_date()).cardHolderNameValid(easypayInfo.getCard_name()).
-                    mobileNumberValid(easypayInfo.getBank_mobile()).nonceStrValid(easypayInfo.getNonce_str());
+            dataValidationUtils.bankCardValid(paramMap.get("card_no")).cardValid(paramMap.get("id_type"),
+                    paramMap.get("id_no")).cardTypeValid(paramMap.get("card_type"), paramMap.get("cvv2"),
+                    paramMap.get("card_valid_date")).cardHolderNameValid(paramMap.get("card_name")).
+                    mobileNumberValid(paramMap.get("bank_mobile")).nonceStrValid(paramMap.get("nonce_str"));
         } catch (MyException.NonceStrLengthException e) {
             responseMap.put("status", "FAIL");
             responseMap.put("message", "随机字符串长度错误");

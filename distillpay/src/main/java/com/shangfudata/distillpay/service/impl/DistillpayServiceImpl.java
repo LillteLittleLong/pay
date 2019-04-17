@@ -12,6 +12,7 @@ import com.shangfudata.distillpay.util.AesUtils;
 import com.shangfudata.distillpay.util.DataValidationUtils;
 import com.shangfudata.distillpay.util.RSAUtils;
 import com.shangfudata.distillpay.util.SignUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,26 +61,20 @@ public class DistillpayServiceImpl implements DistillpayService {
         Map rsp = new HashMap();
         //创建一个工具类对象
         DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
-
         Gson gson = new Gson();
 
-        Map map = gson.fromJson(distillpayInfoToJson, Map.class);
+        Map<String,String> jsonToMap = gson.fromJson(distillpayInfoToJson, Map.class);
 
         //验空
-        dataValidationUtils.isNullValid(map,rsp);
+        dataValidationUtils.isNullValid(jsonToMap,rsp);
         if ("FAIL".equals(rsp.get("status"))) {
             return gson.toJson(rsp);
         }
 
-        //取签名
-        String sign = (String)map.remove("sign");
-        String s = gson.toJson(map);
-
         //下游传递上来的机构id，签名信息
-        DistillpayInfo distillpayInfo = gson.fromJson(distillpayInfoToJson, DistillpayInfo.class);
-        String down_sp_id = distillpayInfo.getDown_sp_id();
-
-        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById(down_sp_id);
+        String down_sp_id = jsonToMap.get("down_sp_id");
+        DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(down_sp_id);
+        logger.info("下游机构信息：："+downSpInfo);
         if(null == downSpInfo){
             rsp.put("status", "FAIL");
             rsp.put("message", "非法机构");
@@ -88,10 +83,10 @@ public class DistillpayServiceImpl implements DistillpayService {
         }
 
         //拿到密钥(私钥)
-        String my_pri_key = downSpInfo.get().getMy_pri_key();
+        String my_pri_key = downSpInfo.getMy_pri_key();
         RSAPrivateKey rsaPrivateKey = null;
         //拿到密钥(公钥)
-        String down_pub_key = downSpInfo.get().getDown_pub_key();
+        String down_pub_key = downSpInfo.getDown_pub_key();
         RSAPublicKey rsaPublicKey = null;
         try {
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
@@ -103,24 +98,27 @@ public class DistillpayServiceImpl implements DistillpayService {
             return gson.toJson(rsp);
         }
 
-        //公钥验签
-        if (RSAUtils.doCheck(s, sign, rsaPublicKey)){
+        //私钥解密字段
+        Map<String, String> decodeMap = downDecoding(jsonToMap, rsaPrivateKey, rsp);
+        if ("FAIL".equals(rsp.get("status"))) {
+            return gson.toJson(rsp);
+        }
 
-            //私钥解密字段
-            downDecoding(distillpayInfo, rsaPrivateKey,rsp);
-            if ("FAIL".equals(rsp.get("status"))) {
-                return gson.toJson(rsp);
-            }
+        //取签名
+        String sign = decodeMap.remove("sign");
+        String decodeJson = gson.toJson(decodeMap);
+        //公钥验签
+        if (RSAUtils.doCheck(decodeJson, sign, rsaPublicKey)){
 
             // 数据效验
-            dataValidationUtils.processMyException(distillpayInfo, rsp);
+            dataValidationUtils.processMyException(decodeMap, rsp);
             if ("FAIL".equals(rsp.get("status"))) {
                 return gson.toJson(rsp);
             }
 
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
-            String downRoutingResponse = eurekaDistillpayClient.downRouting(distillpayInfo.getDown_mch_id(), distillpayInfo.getDown_sp_id(), distillpayInfo.getTotal_fee(), "distillpay");
+            String downRoutingResponse = eurekaDistillpayClient.downRouting(decodeMap.get("down_mch_id"), decodeMap.get("down_sp_id"), decodeMap.get("total_fee"), "distillpay");
             Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -129,7 +127,7 @@ public class DistillpayServiceImpl implements DistillpayService {
             }
 
             // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
-            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(distillpayInfo.getDown_sp_id() , "distillpay");
+            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(decodeMap.get("down_sp_id") , "distillpay");
 
             // 如果为空返回无通道
             if (null == upRoutingInfo) {
@@ -139,7 +137,7 @@ public class DistillpayServiceImpl implements DistillpayService {
             }
 
             // 查看 上游通道路由分发处理
-            String upRoutingResponse = eurekaDistillpayClient.upRouting(distillpayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), distillpayInfo.getTotal_fee(), "distillpay");
+            String upRoutingResponse = eurekaDistillpayClient.upRouting(decodeMap.get("down_sp_id"), upRoutingInfo.getMch_id(), decodeMap.get("total_fee"), "distillpay");
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -149,6 +147,7 @@ public class DistillpayServiceImpl implements DistillpayService {
             /* ------------------------ 路由分发 ------------------------------ */
 
             // 无异常，保存下游请求信息到数据库
+            DistillpayInfo distillpayInfo = gson.fromJson(decodeJson, DistillpayInfo.class);
             distillpayInfoRespository.save(distillpayInfo);
             logger.info("保存下游请求信息到数据库："+distillpayInfo);
 
@@ -166,10 +165,13 @@ public class DistillpayServiceImpl implements DistillpayService {
             distillpaySenderService.sendMessage("distillpayinfo.notice",upDistillpayInfoJson);
 
             // 封装响应数据
-            rsp.put("sp_id",distillpayInfo.getDown_sp_id());
-            rsp.put("mch_id",distillpayInfo.getDown_mch_id());
+            rsp.put("out_trade_no",distillpayInfo.getOut_trade_no());
             rsp.put("status", "SUCCESS");
-            rsp.put("trade_state", "正在处理中");
+            rsp.put("trade_state", "PROCESSING");
+            rsp.put("err_code","TSP001");
+            rsp.put("err_msg","正在处理中");
+            rsp.put("nonce_str", RandomStringUtils.randomAlphanumeric(10));
+            rsp.put("sign",RSAUtils.sign(gson.toJson(rsp),rsaPrivateKey));
 
             //返回响应参数
             return gson.toJson(rsp);
@@ -258,7 +260,7 @@ public class DistillpayServiceImpl implements DistillpayService {
             distributionMap.put("down_busi_id", down_busi_id);
             distributionMap.put("out_trade_no", distillpayInfo.getOut_trade_no());
             //清分
-            distribution(distributionMap);
+            //distribution(distributionMap);
         }else if("FAIL".equals(response.getStatus())){
             logger.info("上游处理失败信息："+response);
             distillpayInfoRespository.save(distillpayInfo);
@@ -268,19 +270,25 @@ public class DistillpayServiceImpl implements DistillpayService {
     /**
      * RSA 解密方法
      *
-     * @param distillpayInfo
+     * @param map
      * @param rsaPrivateKey
      */
-    public void downDecoding(DistillpayInfo distillpayInfo, RSAPrivateKey rsaPrivateKey,Map rsp)  {
+    public Map<String,String> downDecoding(Map<String,String> map, RSAPrivateKey rsaPrivateKey,Map rsp)  {
+
         try {
-            distillpayInfo.setCard_name(RSAUtils.privateKeyDecrypt(distillpayInfo.getCard_name(), rsaPrivateKey));
-            distillpayInfo.setCard_no(RSAUtils.privateKeyDecrypt(distillpayInfo.getCard_no(), rsaPrivateKey));
-            distillpayInfo.setId_no(RSAUtils.privateKeyDecrypt(distillpayInfo.getId_no(), rsaPrivateKey));
+            map.put("card_name",RSAUtils.privateKeyDecrypt(map.get("card_name"), rsaPrivateKey));
+            map.put("card_no",RSAUtils.privateKeyDecrypt(map.get("card_no"), rsaPrivateKey));
+            map.put("id_no",RSAUtils.privateKeyDecrypt(map.get("id_no"), rsaPrivateKey));
+
         } catch (Exception e) {
             rsp.put("status", "FAIL");
             rsp.put("message", "密钥错误");
             logger.error("RSA解密exception:"+e);
+            return rsp;
         }
+        return map;
+
+
     }
 
     /**

@@ -44,7 +44,7 @@ public class DistillpayApplicationTests {
         distillpayInfo.setDown_mch_id("101");
 
         distillpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        distillpayInfo.setBody("佛前我");
+        distillpayInfo.setBody("司法权威");
         distillpayInfo.setTotal_fee("110000");
         distillpayInfo.setSettle_acc_type("PERSONNEL");
         distillpayInfo.setBank_name("中国工商银行");
@@ -56,17 +56,19 @@ public class DistillpayApplicationTests {
         distillpayInfo.setNonce_str("12345678901234567890123456789011");
         distillpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
 
+        Gson gson = new Gson();
+        String s = gson.toJson(distillpayInfo);
+
+        //私钥签名
+        distillpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+
         //公钥加密
         distillpayInfo.setCard_name(RSAUtils.publicKeyEncrypt(distillpayInfo.getCard_name(), rsaPublicKey));
         distillpayInfo.setCard_no(RSAUtils.publicKeyEncrypt(distillpayInfo.getCard_no(), rsaPublicKey));
         distillpayInfo.setId_no(RSAUtils.publicKeyEncrypt(distillpayInfo.getId_no(), rsaPublicKey));
 
 
-        Gson gson = new Gson();
-        String s = gson.toJson(distillpayInfo);
 
-        //私钥签名
-        distillpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
         /*String sign = easypayInfo.getSign();
         System.out.println("签名信息"+sign);*/
 
@@ -79,14 +81,34 @@ public class DistillpayApplicationTests {
 
 
     @Test
-    public void testQuery(){
-        DistillpayInfo distillpayInfo = new DistillpayInfo();
+    public void testQuery() throws Exception{
+       /* DistillpayInfo distillpayInfo = new DistillpayInfo();
         distillpayInfo.setOut_trade_no("1553583029654");
         Gson gson = new Gson();
         String s = gson.toJson(distillpayInfo);
-        System.out.println(s);
+        System.out.println(s);*/
         //String query = queryController.Query(s);
         //System.out.println(query);
+
+
+        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
+
+        //获取私钥
+        String down_pri_key = downSpInfo.get().getDown_pri_key();
+        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+
+        DistillpayInfo collpayInfo = new DistillpayInfo();
+        collpayInfo.setDown_sp_id("1001");
+        collpayInfo.setOut_trade_no("1555496117372");
+        collpayInfo.setNonce_str("12345678901234567890123456789011");
+
+        Gson gson = new Gson();
+        String s = gson.toJson(collpayInfo);
+
+        collpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+
+        //String query = queryController.Query(s);
+        System.out.println(gson.toJson(collpayInfo));
     }
 
 

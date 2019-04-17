@@ -306,13 +306,13 @@ public class DataValidationUtils {
     /**
      * Easypay 下游请求参数异常处理方法
      */
-    public void processMyException(DistillpayInfo distillpayInfo, Map responseMap) {
+    public void processMyException(Map<String,String> paramMap, Map responseMap) {
         // 数据效验
         // 异常处理
         try {
-            dataValidationUtils.settleAccTypeValid(distillpayInfo.getSettle_acc_type(),distillpayInfo.getId_type(),distillpayInfo.getId_no())
-            .bankNoValid(distillpayInfo.getBank_no()).cardHolderNameValid(distillpayInfo.getCard_name()).bankCardValid(distillpayInfo.getCard_no())
-            .nonceStrValid(distillpayInfo.getNonce_str());
+            dataValidationUtils.settleAccTypeValid(paramMap.get("settle_acc_type"),paramMap.get("id_type"),paramMap.get("id_no"))
+            .bankNoValid(paramMap.get("bank_no")).cardHolderNameValid(paramMap.get("card_name")).bankCardValid(paramMap.get("card_no"))
+            .nonceStrValid(paramMap.get("nonce_str"));
         } catch (MyException.settleAccTypeError settleAccTypeError) {
             responseMap.put("status", "FAIL");
             responseMap.put("message", "账户类型错误");

@@ -52,6 +52,9 @@ public class NoticeServiceImpl implements NoticeService {
 
         Map map = new HashMap();
 
+        map.put("out_trade_no",distillpayInfo.getOut_trade_no());
+        map.put("total_fee",distillpayInfo.getTotal_fee());
+
         if("SUCCESS".equals(distillpayInfo.getStatus())){
             map.put("status",distillpayInfo.getStatus());
             map.put("trade_state",distillpayInfo.getTrade_state());

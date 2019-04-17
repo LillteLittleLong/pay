@@ -13,6 +13,7 @@ import com.shangfudata.easypay.util.AesUtils;
 import com.shangfudata.easypay.util.DataValidationUtils;
 import com.shangfudata.easypay.util.RSAUtils;
 import com.shangfudata.easypay.util.SignUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +47,7 @@ public class EasypayServiceImpl implements EasypayService {
     Logger logger = LoggerFactory.getLogger(this.getClass());
 
     //创建一个map装返回信息
-    Map rsp = new HashMap();
+    Map<String,String> rsp = new HashMap();
 
     /**
      * 对下开放快捷交易方法
@@ -58,25 +59,23 @@ public class EasypayServiceImpl implements EasypayService {
     public String downEasypay(String easypayInfoToJson) {
         //创建一个工具类对象
         DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
-
         Gson gson = new Gson();
 
-        Map map = gson.fromJson(easypayInfoToJson, Map.class);
+        Map<String,String> jsonToMap = gson.fromJson(easypayInfoToJson, Map.class);
+
         //验空
-        dataValidationUtils.isNullValid(map, rsp);
+        dataValidationUtils.isNullValid(jsonToMap, rsp);
         if ("FAIL".equals(rsp.get("status"))) {
             return gson.toJson(rsp);
         }
 
-        //取签名
-        String sign = (String) map.remove("sign");
-        String s = gson.toJson(map);
+        //EasypayInfo easypayInfo = gson.fromJson(easypayInfoToJson, EasypayInfo.class);
+        //String down_sp_id = easypayInfo.getDown_sp_id();
 
         //下游传递上来的机构id，签名信息
-        EasypayInfo easypayInfo = gson.fromJson(easypayInfoToJson, EasypayInfo.class);
-        String down_sp_id = easypayInfo.getDown_sp_id();
-
-        Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
+        String down_sp_id = jsonToMap.get("down_sp_id");
+        DownSpInfo downSpInfo = downSpInfoRepository.findBySpId(down_sp_id);
+        logger.info("下游机构信息：："+downSpInfo);
         if(null == downSpInfo){
             rsp.put("status", "FAIL");
             rsp.put("message", "非法机构");
@@ -85,10 +84,10 @@ public class EasypayServiceImpl implements EasypayService {
         }
 
         //拿到密钥(私钥)
-        String my_pri_key = downSpInfo.get().getMy_pri_key();
+        String my_pri_key = downSpInfo.getMy_pri_key();
         RSAPrivateKey rsaPrivateKey = null;
         //拿到密钥(公钥)
-        String down_pub_key = downSpInfo.get().getDown_pub_key();
+        String down_pub_key = downSpInfo.getDown_pub_key();
         RSAPublicKey rsaPublicKey = null;
         try {
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
@@ -100,23 +99,29 @@ public class EasypayServiceImpl implements EasypayService {
             return gson.toJson(rsp);
         }
 
+        //私钥解密字段
+        Map<String, String> decodeMap = downDecoding(jsonToMap, rsaPrivateKey, rsp);
+        logger.info("解密后报文:"+decodeMap);
+        if ("FAIL".equals(rsp.get("status"))) {
+            return gson.toJson(rsp);
+        }
+
+
+        //取签名
+        String sign = decodeMap.remove("sign");
+        String decodeJson = gson.toJson(decodeMap);
         //公钥验签
-        if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
-            //私钥解密字段
-            downDecoding(easypayInfo, rsaPrivateKey);
-            if ("FAIL".equals(rsp.get("status"))) {
-                return gson.toJson(rsp);
-            }
+        if (RSAUtils.doCheck(decodeJson, sign, rsaPublicKey)) {
 
             // 数据效验
-            dataValidationUtils.processMyException(easypayInfo, rsp);
+            dataValidationUtils.processMyException(decodeMap, rsp);
             if ("FAIL".equals(rsp.get("status"))) {
                 return gson.toJson(rsp);
             }
 
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
-            String downRoutingResponse = eurekaEasypayClient.downRouting(easypayInfo.getDown_mch_id(), easypayInfo.getDown_sp_id(), easypayInfo.getTotal_fee(), "easypay");
+            String downRoutingResponse = eurekaEasypayClient.downRouting(decodeMap.get("down_mch_id"), decodeMap.get("down_sp_id"), decodeMap.get("total_fee"), "easypay");
             Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -125,7 +130,7 @@ public class EasypayServiceImpl implements EasypayService {
             }
 
             // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
-            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(easypayInfo.getDown_sp_id(), "easypay");
+            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(decodeMap.get("down_sp_id"), "easypay");
 
             // 如果为空返回无通道
             if (null == upRoutingInfo) {
@@ -136,7 +141,7 @@ public class EasypayServiceImpl implements EasypayService {
             }
 
             // 查看 上游通道路由分发处理
-            String upRoutingResponse = eurekaEasypayClient.upRouting(easypayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), easypayInfo.getTotal_fee(), "easypay");
+            String upRoutingResponse = eurekaEasypayClient.upRouting(decodeMap.get("down_sp_id"), upRoutingInfo.getMch_id(), decodeMap.get("total_fee"), "easypay");
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -144,9 +149,8 @@ public class EasypayServiceImpl implements EasypayService {
                 return gson.toJson(upRoutingMap);
             }
             /* ------------------------ 路由分发 ------------------------------ */
-            String EasypayInfoToJson = gson.toJson(easypayInfo);
 
-            Map upEasypayInfoMap = gson.fromJson(EasypayInfoToJson, Map.class);
+            Map upEasypayInfoMap = gson.fromJson(decodeJson, Map.class);
             upEasypayInfoMap.put("down_busi_id", downRoutingMap.get("down_busi_id"));
             upEasypayInfoMap.put("up_busi_id", upRoutingMap.get("up_busi_id"));
             upEasypayInfoMap.put("mch_id", upRoutingInfo.getMch_id());
@@ -177,7 +181,7 @@ public class EasypayServiceImpl implements EasypayService {
         String s = gson.toJson(easypayInfoToMap);
         EasypayInfo easypayInfo = gson.fromJson(s, EasypayInfo.class);
         //移除下游信息
-        easypayInfoToMap.remove("down_sp_id");
+        String down_sp_id = (String)easypayInfoToMap.remove("down_sp_id");
         easypayInfoToMap.remove("down_mch_id");
         easypayInfoToMap.remove("down_notify_url");
         easypayInfoToMap.remove("sign");
@@ -224,32 +228,54 @@ public class EasypayServiceImpl implements EasypayService {
             return gson.toJson(rsp);
         }
 
+        DownSpInfo downSpInfo = downSpInfoRepository.findBySpId(down_sp_id);
+        //拿到密钥(私钥)
+        String my_pri_key = downSpInfo.getMy_pri_key();
+        RSAPrivateKey rsaPrivateKey = null;
+        try {
+            rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+        } catch (Exception e) {
+            rsp.put("status", "FAIL");
+            rsp.put("message", "密钥错误");
+            logger.error("获取密钥错误:"+e);
+            return gson.toJson(rsp);
+        }
+
         // 封装响应数据
-        rsp.put("sp_id", easypayInfo.getDown_sp_id());
-        rsp.put("mch_id", easypayInfo.getDown_mch_id());
         rsp.put("status", "SUCCESS");
-        rsp.put("trade_state", "正在处理中,请输入验证码");
+        rsp.put("out_trade_no",easypayInfo.getOut_trade_no());
+        rsp.put("trade_state", "NOTPAY");
+        rsp.put("err_code","TSP001");
+        rsp.put("err_msg","等待交易");
+        rsp.put("nonce_str", RandomStringUtils.randomAlphanumeric(10));
+        rsp.put("sign",RSAUtils.sign(gson.toJson(rsp),rsaPrivateKey));
         return gson.toJson(rsp);
     }
 
     /**
      * RSA 解密方法
-     * @param easypayInfo
+     * @param map
      * @param rsaPrivateKey
      */
-    public void downDecoding(EasypayInfo easypayInfo, RSAPrivateKey rsaPrivateKey) {
-        try{
-            easypayInfo.setCard_name(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_name(), rsaPrivateKey));
-            easypayInfo.setCard_no(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_no(), rsaPrivateKey));
-            easypayInfo.setId_no(RSAUtils.privateKeyDecrypt(easypayInfo.getId_no(), rsaPrivateKey));
-            easypayInfo.setBank_mobile(RSAUtils.privateKeyDecrypt(easypayInfo.getBank_mobile(), rsaPrivateKey));
-            easypayInfo.setCvv2(RSAUtils.privateKeyDecrypt(easypayInfo.getCvv2(), rsaPrivateKey));
-            easypayInfo.setCard_valid_date(RSAUtils.privateKeyDecrypt(easypayInfo.getCard_valid_date(), rsaPrivateKey));
+    public Map<String,String> downDecoding(Map<String,String> map, RSAPrivateKey rsaPrivateKey,Map rsp)  {
+
+        try {
+            map.put("card_name",RSAUtils.privateKeyDecrypt(map.get("card_name"), rsaPrivateKey));
+            map.put("card_no",RSAUtils.privateKeyDecrypt(map.get("card_no"), rsaPrivateKey));
+            map.put("id_no",RSAUtils.privateKeyDecrypt(map.get("id_no"), rsaPrivateKey));
+            map.put("bank_mobile",RSAUtils.privateKeyDecrypt(map.get("bank_mobile"), rsaPrivateKey));
+            map.put("cvv2",RSAUtils.privateKeyDecrypt(map.get("cvv2"), rsaPrivateKey));
+            map.put("card_valid_date",RSAUtils.privateKeyDecrypt(map.get("card_valid_date"), rsaPrivateKey));
+
         } catch (Exception e) {
             rsp.put("status", "FAIL");
             rsp.put("message", "密钥错误");
             logger.error("RSA解密exception:"+e);
+            return rsp;
         }
+        return map;
+
+
     }
 
     /**

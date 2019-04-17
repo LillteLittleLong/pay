@@ -25,7 +25,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
 
     Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Scheduled(cron = "0/30 * * * * ?")
+    @Scheduled(cron = "0 */50 * * * ?")
     @Override
     public void checkReconCollPay() {
         String tradeType = "CP_PAY";
@@ -142,7 +142,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
         }
     }
 
-    @Scheduled(cron = "0/30 * * * * ?")
+    @Scheduled(cron = "0 */50 * * * ?")
     @Override
     public void checkReconDistillPay() {
         String tradeType = "DISTILL_PAY";
@@ -185,7 +185,7 @@ public class ReconCheckServiceImpl implements ReconCheckService {
      * 每天
      */
     @Override
-    @Scheduled(cron = "0 0/5 * * * ?") // 每5分钟执行一次
+    @Scheduled(cron = "0 */50 * * * ?")// 每5分钟执行一次
     //@Scheduled(cron = "0 0 0 1/1 * ?") // 每一天执行一次
     public void clearReconCheck() {
         reconCheckInfoRepository.updateReconCheck();

@@ -44,7 +44,7 @@ public class GatewaypayApplicationTests {
         gatewaypayInfo.setDown_mch_id("101");
         gatewaypayInfo.setOut_trade_no(System.currentTimeMillis() + "");
         gatewaypayInfo.setTotal_fee("3210");
-        gatewaypayInfo.setBody("小叮当");
+        gatewaypayInfo.setBody("服务费");
         gatewaypayInfo.setNotify_url("http://192.168.88.188:8104/gatewaypay/notice");
         gatewaypayInfo.setDown_notify_url("http://192.168.88.188:9001/consumer/notice");
         gatewaypayInfo.setCall_back_url("http://192.168.88.188:9001/consumer/success");
@@ -63,14 +63,32 @@ public class GatewaypayApplicationTests {
     }
 
     @Test
-    public void testQuery(){
-        GatewaypayInfo gatewaypayInfo = new GatewaypayInfo();
+    public void testQuery() throws Exception{
+        /*GatewaypayInfo gatewaypayInfo = new GatewaypayInfo();
         gatewaypayInfo.setOut_trade_no("1553671639717");
         Gson gson = new Gson();
         String s = gson.toJson(gatewaypayInfo);
         //System.out.println(s);
        String query = queryController.Query(s);
-        System.out.println(query);
+        System.out.println(query);*/
+        Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById("1001");
+
+        //获取私钥
+        String down_pri_key = downSpInfo.get().getDown_pri_key();
+        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+
+        GatewaypayInfo gatewaypayInfo = new GatewaypayInfo();
+        gatewaypayInfo.setDown_sp_id("1001");
+        gatewaypayInfo.setOut_trade_no("1555497817525");
+        gatewaypayInfo.setNonce_str("12345678901234567890123456789011");
+
+        Gson gson = new Gson();
+        String s = gson.toJson(gatewaypayInfo);
+
+        gatewaypayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+
+        //String query = queryController.Query(s);
+        System.out.println(gson.toJson(gatewaypayInfo));
     }
 
 }

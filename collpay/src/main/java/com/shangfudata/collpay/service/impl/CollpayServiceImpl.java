@@ -83,8 +83,6 @@ public class CollpayServiceImpl implements CollpayService {
             return gson.toJson(rsp);
         }
 
-        //CollpayInfo collpayInfo = gson.fromJson(CollpayInfoToJson, CollpayInfo.class);
-        //String down_sp_id = collpayInfo.getDown_sp_id();
         //下游传递上来的机构id，签名信息
         String down_sp_id = jsonToMap.get("down_sp_id");
         DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(down_sp_id);
@@ -182,8 +180,8 @@ public class CollpayServiceImpl implements CollpayService {
             rsp.put("out_trade_no",collpayInfo.getOut_trade_no());
             rsp.put("status", "SUCCESS");
             rsp.put("trade_state", "PROCESSING");
-            rsp.put("err_code",collpayInfo.getErr_code());
-            rsp.put("err_msg",collpayInfo.getErr_msg());
+            rsp.put("err_code","TSP001");
+            rsp.put("err_msg","正在处理中");
             rsp.put("nonce_str", RandomStringUtils.randomAlphanumeric(10));
             rsp.put("sign",RSAUtils.sign(gson.toJson(rsp),rsaPrivateKey));
 

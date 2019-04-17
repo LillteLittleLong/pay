@@ -60,34 +60,31 @@ public class GatewaypayServiceImpl implements GatewaypayService {
 
         Gson gson = new Gson();
 
-        Map map = gson.fromJson(gatewaypayInfoToJson, Map.class);
+        Map<String,String> jsonToMap = gson.fromJson(gatewaypayInfoToJson, Map.class);
+        //Map map = gson.fromJson(gatewaypayInfoToJson, Map.class);
 
         //验空
-        dataValidationUtils.isNullValid(map, rsp);
+        dataValidationUtils.isNullValid(jsonToMap, rsp);
         if ("FAIL".equals(rsp.get("status"))) {
             return gson.toJson(rsp);
         }
 
-        //取签名
-        String sign = (String) map.remove("sign");
-        String s = gson.toJson(map);
-
         //下游传递上来的机构id，签名信息
-        GatewaypayInfo gatewaypayInfo = gson.fromJson(gatewaypayInfoToJson, GatewaypayInfo.class);
-        String down_sp_id = gatewaypayInfo.getDown_sp_id();
-
-        Optional<DownSpInfo> downSpInfo = downSpInfoRepository.findById(down_sp_id);
+        String down_sp_id = jsonToMap.get("down_sp_id");
+        DownSpInfo downSpInfo = downSpInfoRepository.findBySpId(down_sp_id);
+        logger.info("下游机构信息：："+downSpInfo);
         if(null == downSpInfo){
             rsp.put("status", "FAIL");
             rsp.put("message", "非法机构");
             logger.error("当前机构非法");
             return gson.toJson(rsp);
         }
+
         //拿到密钥(私钥)
-        String my_pri_key = downSpInfo.get().getMy_pri_key();
+        String my_pri_key = downSpInfo.getMy_pri_key();
         RSAPrivateKey rsaPrivateKey = null;
         //拿到密钥(公钥)
-        String down_pub_key = downSpInfo.get().getDown_pub_key();
+        String down_pub_key = downSpInfo.getDown_pub_key();
         RSAPublicKey rsaPublicKey = null;
         try {
             rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
@@ -99,12 +96,16 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             return gson.toJson(rsp);
         }
 
+        //取签名
+        String sign = jsonToMap.remove("sign");
+        String decodeJson = gson.toJson(jsonToMap);
+
         //公钥验签
-        if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
+        if (RSAUtils.doCheck(decodeJson, sign, rsaPublicKey)) {
 
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
-            String downRoutingResponse = eurekaGatewaypayClient.downRouting(gatewaypayInfo.getDown_mch_id(), gatewaypayInfo.getDown_sp_id(), gatewaypayInfo.getTotal_fee(), "gatewaypay");
+            String downRoutingResponse = eurekaGatewaypayClient.downRouting(jsonToMap.get("down_mch_id"), jsonToMap.get("down_sp_id"), jsonToMap.get("total_fee"), "gatewaypay");
             Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -115,7 +116,7 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             }
 
             // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
-            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(gatewaypayInfo.getDown_sp_id(), "gatewaypay");
+            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(jsonToMap.get("down_sp_id"), "gatewaypay");
 
             // 如果为空返回无通道
             if (null == upRoutingInfo) {
@@ -125,7 +126,7 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             }
 
             // 查看 上游通道路由分发处理
-            String upRoutingResponse = eurekaGatewaypayClient.upRouting(gatewaypayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), gatewaypayInfo.getTotal_fee(), "gatewaypay");
+            String upRoutingResponse = eurekaGatewaypayClient.upRouting(jsonToMap.get("down_sp_id"), upRoutingInfo.getMch_id(), jsonToMap.get("total_fee"), "gatewaypay");
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -134,9 +135,9 @@ public class GatewaypayServiceImpl implements GatewaypayService {
             }
             /* ------------------------ 路由分发 ------------------------------ */
 
-            String GatewaypayInfoToJson = gson.toJson(gatewaypayInfo);
+            //String GatewaypayInfoToJson = gson.toJson(gatewaypayInfo);
 
-            Map upGatewaypayInfoMap = gson.fromJson(GatewaypayInfoToJson, Map.class);
+            Map upGatewaypayInfoMap = gson.fromJson(decodeJson, Map.class);
             upGatewaypayInfoMap.put("down_busi_id", downRoutingMap.get("down_busi_id"));
             upGatewaypayInfoMap.put("up_busi_id", upRoutingMap.get("up_busi_id"));
             upGatewaypayInfoMap.put("mch_id", upRoutingInfo.getMch_id());

@@ -2,21 +2,27 @@ package com.shangfudata.easypay.service.impl;
 
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
+import com.shangfudata.easypay.dao.DownSpInfoRepository;
 import com.shangfudata.easypay.dao.EasypayInfoRepository;
 import com.shangfudata.easypay.dao.SysReconInfoRepository;
 import com.shangfudata.easypay.dao.UpMchInfoRepository;
+import com.shangfudata.easypay.entity.DownSpInfo;
 import com.shangfudata.easypay.entity.EasypayInfo;
 import com.shangfudata.easypay.entity.QueryInfo;
 import com.shangfudata.easypay.entity.UpMchInfo;
 import com.shangfudata.easypay.service.NoticeService;
 import com.shangfudata.easypay.service.QueryService;
+import com.shangfudata.easypay.util.RSAUtils;
 import com.shangfudata.easypay.util.SignUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +40,8 @@ public class QueryServiceImpl implements QueryService {
     UpMchInfoRepository upMchInfoRepository;
     @Autowired
     SysReconInfoRepository sysReconInfoRepository;
+    @Autowired
+    DownSpInfoRepository downSpInfoRespository;
 
     Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -111,7 +119,7 @@ public class QueryServiceImpl implements QueryService {
      */
     //@Cacheable(value = "collpay", key = "#order.outTradeNo", unless = "#result.tradeState eq 'PROCESSING'")
     public String downQuery(String easypayInfoToJson) {
-        //创建一个map装返回信息
+        /*//创建一个map装返回信息
         Map<String, String> rsp = new HashMap();
         Gson gson = new Gson();
         EasypayInfo easypayInfo = gson.fromJson(easypayInfoToJson, EasypayInfo.class);
@@ -125,6 +133,70 @@ public class QueryServiceImpl implements QueryService {
             return gson.toJson(rsp);
         }
 
-        return gson.toJson(finalEasypayInfo);
+        return gson.toJson(finalEasypayInfo);*/
+
+
+        //创建一个map装返回信息
+        Map<String,String> rsp = new HashMap();
+
+        Gson gson = new Gson();
+
+        Map<String,String> jsonToMap = gson.fromJson(easypayInfoToJson, Map.class);
+
+        String sign = jsonToMap.remove("sign");
+        String down_sp_id = jsonToMap.get("down_sp_id");
+        DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(down_sp_id);
+
+        //拿到密钥(私钥)
+        String my_pri_key = downSpInfo.getMy_pri_key();
+        RSAPrivateKey rsaPrivateKey = null;
+        //拿到密钥(公钥)
+        String down_pub_key = downSpInfo.getDown_pub_key();
+        RSAPublicKey rsaPublicKey = null;
+        try {
+            rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        } catch (Exception e) {
+            rsp.put("status", "FAIL");
+            rsp.put("message", "密钥错误");
+            logger.error("获取密钥错误:"+e);
+            return gson.toJson(rsp);
+        }
+
+        //验签
+        if (RSAUtils.doCheck(gson.toJson(jsonToMap), sign, rsaPublicKey)) {
+            //随机字符串验证
+            String nonce_str = jsonToMap.get("nonce_str");
+            if (!(nonce_str.length() == 32)) {
+                rsp.put("status", "FAIL");
+                rsp.put("message", "[nonce_str]随机字符串长度错误");
+                logger.error("随机字符串长度错误");
+                return gson.toJson(rsp);
+            }
+
+
+            EasypayInfo finalEasypayInfo = easypayInfoRepository.findByOutTradeNo(jsonToMap.get("out_trade_no"));
+
+            if(null == finalEasypayInfo){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "查询信息错误");
+                logger.error("未查到订单，查询错误");
+                return gson.toJson(rsp);
+            }
+            rsp.put("status","SUCCESS");
+            rsp.put("out_trade_no",finalEasypayInfo.getOut_trade_no());
+            rsp.put("trade_state",finalEasypayInfo.getTrade_state());
+            rsp.put("err_code",finalEasypayInfo.getErr_code());
+            rsp.put("err_msg",finalEasypayInfo.getErr_msg());
+            rsp.put("nonce_str", RandomStringUtils.randomAlphanumeric(10));
+            rsp.put("sign",RSAUtils.sign(gson.toJson(rsp),rsaPrivateKey));
+            return gson.toJson(rsp);
+        }
+
+        //验签失败，直接返回
+        rsp.put("status", "FAIL");
+        rsp.put("message", "[sign]签名错误");
+        logger.error("签名错误");
+        return gson.toJson(rsp);
     }
 }

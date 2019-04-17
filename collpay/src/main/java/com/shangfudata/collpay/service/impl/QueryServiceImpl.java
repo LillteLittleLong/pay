@@ -158,7 +158,7 @@ public class QueryServiceImpl implements QueryService {
             if (!(nonce_str.length() == 32)) {
                 rsp.put("status", "FAIL");
                 rsp.put("message", "[nonce_str]随机字符串长度错误");
-                logger.error("未查到订单，查询错误");
+                logger.error("随机字符串长度错误");
                 return gson.toJson(rsp);
             }
 
