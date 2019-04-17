@@ -57,6 +57,7 @@ public class NoticeServiceImpl implements NoticeService {
             map.put("trade_state", collpayInfo.getTrade_state());
             map.put("err_code", collpayInfo.getErr_code());
             map.put("err_msg", collpayInfo.getErr_msg());
+
         } else if ("FAIL".equals(collpayInfo.getStatus())) {
             map.put("status", collpayInfo.getStatus());
             map.put("trade_state", collpayInfo.getTrade_state());

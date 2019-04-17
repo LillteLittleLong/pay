@@ -3,19 +3,28 @@ package com.shangfudata.collpay.service.impl;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
 import com.shangfudata.collpay.dao.CollpayInfoRespository;
+import com.shangfudata.collpay.dao.DownSpInfoRespository;
 import com.shangfudata.collpay.dao.SysReconInfoRepository;
 import com.shangfudata.collpay.dao.UpMchInfoRepository;
 import com.shangfudata.collpay.entity.CollpayInfo;
+import com.shangfudata.collpay.entity.DownSpInfo;
 import com.shangfudata.collpay.entity.QueryInfo;
 import com.shangfudata.collpay.entity.UpMchInfo;
+import com.shangfudata.collpay.exception.MyException;
 import com.shangfudata.collpay.service.NoticeService;
 import com.shangfudata.collpay.service.QueryService;
+import com.shangfudata.collpay.util.DataValidationUtils;
+import com.shangfudata.collpay.util.RSAUtils;
 import com.shangfudata.collpay.util.SignUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +39,8 @@ public class QueryServiceImpl implements QueryService {
     SysReconInfoRepository sysReconInfoRepository;
     @Autowired
     UpMchInfoRepository upMchInfoRepository;
+    @Autowired
+    DownSpInfoRespository downSpInfoRespository;
     @Autowired
     NoticeService noticeService;
 
@@ -115,18 +126,70 @@ public class QueryServiceImpl implements QueryService {
     public String downQuery(String collpayInfoToJson) {
         //创建一个map装返回信息
         Map<String,String> rsp = new HashMap();
-        Gson gson = new Gson();
-        CollpayInfo collpayInfo = gson.fromJson(collpayInfoToJson, CollpayInfo.class);
-        String out_trade_no = collpayInfo.getOut_trade_no();
 
-        CollpayInfo finalCollpayInfo = collpayInfoRepository.findByOutTradeNo(out_trade_no);
-        if(null ==finalCollpayInfo){
+        Gson gson = new Gson();
+
+        Map<String,String> jsonToMap = gson.fromJson(collpayInfoToJson, Map.class);
+
+        String sign = jsonToMap.remove("sign");
+        String down_sp_id = jsonToMap.get("down_sp_id");
+        DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(down_sp_id);
+
+        //拿到密钥(私钥)
+        String my_pri_key = downSpInfo.getMy_pri_key();
+        RSAPrivateKey rsaPrivateKey = null;
+        //拿到密钥(公钥)
+        String down_pub_key = downSpInfo.getDown_pub_key();
+        RSAPublicKey rsaPublicKey = null;
+        try {
+            rsaPrivateKey = RSAUtils.loadPrivateKey(my_pri_key);
+            rsaPublicKey = RSAUtils.loadPublicKey(down_pub_key);
+        } catch (Exception e) {
             rsp.put("status", "FAIL");
-            rsp.put("message", "查询信息错误");
-            logger.error("未查到订单，查询错误");
+            rsp.put("message", "密钥错误");
+            logger.error("获取密钥错误:"+e);
             return gson.toJson(rsp);
         }
 
-        return gson.toJson(finalCollpayInfo);
+        //验签
+        if (RSAUtils.doCheck(gson.toJson(jsonToMap), sign, rsaPublicKey)) {
+            //随机字符串验证
+            String nonce_str = jsonToMap.get("nonce_str");
+            if (!(nonce_str.length() == 32)) {
+                rsp.put("status", "FAIL");
+                rsp.put("message", "[nonce_str]随机字符串长度错误");
+                logger.error("未查到订单，查询错误");
+                return gson.toJson(rsp);
+            }
+
+
+            CollpayInfo finalCollpayInfo = collpayInfoRepository.findByOutTradeNo(jsonToMap.get("out_trade_no"));
+
+            if(null == finalCollpayInfo){
+                rsp.put("status", "FAIL");
+                rsp.put("message", "查询信息错误");
+                logger.error("未查到订单，查询错误");
+                return gson.toJson(rsp);
+            }
+            rsp.put("status","SUCCESS");
+            rsp.put("out_trade_no",finalCollpayInfo.getOut_trade_no());
+            rsp.put("trade_state",finalCollpayInfo.getTrade_state());
+            rsp.put("err_code",finalCollpayInfo.getErr_code());
+            rsp.put("err_msg",finalCollpayInfo.getErr_msg());
+            rsp.put("nonce_str", RandomStringUtils.randomAlphanumeric(10));
+            rsp.put("sign",RSAUtils.sign(gson.toJson(rsp),rsaPrivateKey));
+            return gson.toJson(rsp);
+        }
+
+        //验签失败，直接返回
+        rsp.put("status", "FAIL");
+        rsp.put("message", "[sign]签名错误");
+        logger.error("签名错误");
+        return gson.toJson(rsp);
+
     }
+
+
 }
+
+

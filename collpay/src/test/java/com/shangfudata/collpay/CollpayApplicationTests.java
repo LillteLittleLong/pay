@@ -99,10 +99,10 @@ public class CollpayApplicationTests {
         collpayInfo.setDown_mch_id("101");
 
         collpayInfo.setOut_trade_no(System.currentTimeMillis() + "");
-        collpayInfo.setBody("活动分区");
+        collpayInfo.setBody("废弃物发");
         collpayInfo.setTotal_fee("100999");
         collpayInfo.setCard_type("CREDIT");
-        collpayInfo.setCard_name( "哈哈哈");
+        collpayInfo.setCard_name( "当前");
         collpayInfo.setCard_no("6217992900013005868");
         collpayInfo.setId_type("ID_CARD");
         collpayInfo.setId_no("342101196608282018");
@@ -110,8 +110,15 @@ public class CollpayApplicationTests {
         collpayInfo.setCvv2("123");
         collpayInfo.setCard_valid_date("0318");
         //collpayInfo.setNotify_url("http://192.168.88.188:9001/consumer/notice");
-        collpayInfo.setNotify_url("http://192.168.88.206:8101/notice");
+        collpayInfo.setNotify_url("http://192.168.88.188:8101/notice");
         collpayInfo.setNonce_str("12345678901234567890123456789011");
+
+        Gson gson = new Gson();
+        String s = gson.toJson(collpayInfo);
+
+        //私钥签名
+        collpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+        System.out.println("未加密：："+collpayInfo);
 
         //公钥加密
         collpayInfo.setCard_name(RSAUtils.publicKeyEncrypt(collpayInfo.getCard_name(), rsaPublicKey));
@@ -120,29 +127,35 @@ public class CollpayApplicationTests {
         collpayInfo.setBank_mobile(RSAUtils.publicKeyEncrypt(collpayInfo.getBank_mobile(), rsaPublicKey));
         collpayInfo.setCvv2(RSAUtils.publicKeyEncrypt(collpayInfo.getCvv2(), rsaPublicKey));
         collpayInfo.setCard_valid_date(RSAUtils.publicKeyEncrypt(collpayInfo.getCard_valid_date(), rsaPublicKey));
-
-        Gson gson = new Gson();
-        String s = gson.toJson(collpayInfo);
-
-        //私钥签名
-        collpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
         //String sign = collpayInfo.getSign();
         //System.out.println("签名信息"+sign);
 
         String collpayInfoToJson = gson.toJson(collpayInfo);
-        System.out.println("下游信息"+collpayInfoToJson);
+        System.out.println(collpayInfoToJson);
         //String collpay = collpayController.Collpay(collpayInfoToJson);
         //System.out.println(collpay);
     }
 
-    //@Test
-    public void testQuery() {
+    @Test
+    public void testQuery() throws Exception{
+        Optional<DownSpInfo> downSpInfo = downSpInfoRespository.findById("1001");
+
+        //获取私钥
+        String down_pri_key = downSpInfo.get().getDown_pri_key();
+        RSAPrivateKey rsaPrivateKey = RSAUtils.loadPrivateKey(down_pri_key);
+
         CollpayInfo collpayInfo = new CollpayInfo();
-        collpayInfo.setOut_trade_no("1553148078245");
+        collpayInfo.setDown_sp_id("1001");
+        collpayInfo.setOut_trade_no("1555469616188");
+        collpayInfo.setNonce_str("12345678901234567890123456789011");
+
         Gson gson = new Gson();
         String s = gson.toJson(collpayInfo);
-        String query = queryController.Query(s);
-        System.out.println(query);
+
+        collpayInfo.setSign(RSAUtils.sign(s,rsaPrivateKey));
+
+        //String query = queryController.Query(s);
+        System.out.println(gson.toJson(collpayInfo));
     }
 
     @Test

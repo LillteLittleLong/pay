@@ -324,14 +324,14 @@ public class DataValidationUtils {
     /**
      * CollPay 下游请求参数异常处理方法
      */
-    public void processMyException(CollpayInfo collpayInfo, Map rsp) {
+    public void processMyException(Map<String,String> paramMap, Map rsp) {
         // 数据效验
         // 异常处理
         try {
-            dataValidationUtils.bankCardValid(collpayInfo.getCard_no()).cardValid(collpayInfo.getId_type(),
-                    collpayInfo.getId_no()).cardTypeValid(collpayInfo.getCard_type(), collpayInfo.getCvv2(),
-                    collpayInfo.getCard_valid_date()).cardHolderNameValid(collpayInfo.getCard_name()).
-                    mobileNumberValid(collpayInfo.getBank_mobile()).nonceStrValid(collpayInfo.getNonce_str());
+            dataValidationUtils.bankCardValid(paramMap.get("card_no")).cardValid(paramMap.get("id_type"),
+                    paramMap.get("id_no")).cardTypeValid(paramMap.get("card_type"), paramMap.get("cvv2"),
+                    paramMap.get("card_valid_date")).cardHolderNameValid(paramMap.get("card_name")).
+                    mobileNumberValid(paramMap.get("bank_mobile")).nonceStrValid(paramMap.get("nonce_str"));
         } catch (MyException.NonceStrLengthException e) {
             rsp.put("status", "FAIL");
             rsp.put("message", "随机字符串长度错误");

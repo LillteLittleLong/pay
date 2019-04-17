@@ -13,6 +13,7 @@ import com.shangfudata.collpay.util.AesUtils;
 import com.shangfudata.collpay.util.DataValidationUtils;
 import com.shangfudata.collpay.util.RSAUtils;
 import com.shangfudata.collpay.util.SignUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * 交易接口
@@ -73,23 +75,20 @@ public class CollpayServiceImpl implements CollpayService {
         DataValidationUtils dataValidationUtils = DataValidationUtils.builder();
         Gson gson = new Gson();
 
-        Map map = gson.fromJson(CollpayInfoToJson, Map.class);
+        Map<String,String> jsonToMap = gson.fromJson(CollpayInfoToJson, Map.class);
 
         //验空
-        dataValidationUtils.isNullValid(map,rsp);
+        dataValidationUtils.isNullValid(jsonToMap,rsp);
         if ("FAIL".equals(rsp.get("status"))) {
             return gson.toJson(rsp);
         }
 
-        //取签名
-        String sign = (String) map.remove("sign");
-        String s = gson.toJson(map);
-
+        //CollpayInfo collpayInfo = gson.fromJson(CollpayInfoToJson, CollpayInfo.class);
+        //String down_sp_id = collpayInfo.getDown_sp_id();
         //下游传递上来的机构id，签名信息
-        CollpayInfo collpayInfo = gson.fromJson(CollpayInfoToJson, CollpayInfo.class);
-        String down_sp_id = collpayInfo.getDown_sp_id();
-
+        String down_sp_id = jsonToMap.get("down_sp_id");
         DownSpInfo downSpInfo = downSpInfoRespository.findBySpId(down_sp_id);
+        logger.info("下游机构信息：："+downSpInfo);
         if(null == downSpInfo){
             rsp.put("status", "FAIL");
             rsp.put("message", "非法机构");
@@ -113,23 +112,27 @@ public class CollpayServiceImpl implements CollpayService {
             return gson.toJson(rsp);
         }
 
+        //私钥解密字段
+        Map<String, String> decodeMap = downDecoding(jsonToMap, rsaPrivateKey, rsp);
+        if ("FAIL".equals(rsp.get("status"))) {
+            return gson.toJson(rsp);
+        }
+
+        //取签名
+        String sign = decodeMap.remove("sign");
+        String decodeJson = gson.toJson(decodeMap);
         //公钥验签
-        if (RSAUtils.doCheck(s, sign, rsaPublicKey)) {
-            //私钥解密字段
-            downDecoding(collpayInfo, rsaPrivateKey,rsp);
-            if ("FAIL".equals(rsp.get("status"))) {
-                return gson.toJson(rsp);
-            }
+        if (RSAUtils.doCheck(decodeJson, sign, rsaPublicKey)) {
 
             // 数据效验
-            dataValidationUtils.processMyException(collpayInfo, rsp);
+            dataValidationUtils.processMyException(decodeMap, rsp);
             if ("FAIL".equals(rsp.get("status"))) {
                 return gson.toJson(rsp);
             }
 
             /* ------------------------ 路由分发 ------------------------------ */
             // 下游通道路由分发处理
-            String downRoutingResponse = eurekaCollpayClient.downRouting(collpayInfo.getDown_mch_id(), collpayInfo.getDown_sp_id(), collpayInfo.getTotal_fee(), "collpay");
+            String downRoutingResponse = eurekaCollpayClient.downRouting(decodeMap.get("down_mch_id"), decodeMap.get("down_sp_id"), decodeMap.get("total_fee"), "collpay");
             Map downRoutingMap = gson.fromJson(downRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -138,7 +141,7 @@ public class CollpayServiceImpl implements CollpayService {
             }
 
             // 根据 down_sp_id 查询路由表 , 获取 mch_id sp_id
-            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(collpayInfo.getDown_sp_id(), "collpay");
+            UpRoutingInfo upRoutingInfo = upRoutingInfoRepository.queryByDownSpId(decodeMap.get("down_sp_id"), "collpay");
 
             // 如果为空返回无通道
             if (null == upRoutingInfo) {
@@ -149,7 +152,7 @@ public class CollpayServiceImpl implements CollpayService {
             }
 
             // 查看 上游通道路由分发处理
-            String upRoutingResponse = eurekaCollpayClient.upRouting(collpayInfo.getDown_sp_id(), upRoutingInfo.getMch_id(), collpayInfo.getTotal_fee(), "collpay");
+            String upRoutingResponse = eurekaCollpayClient.upRouting(decodeMap.get("down_sp_id"), upRoutingInfo.getMch_id(), decodeMap.get("total_fee"), "collpay");
             Map upRoutingMap = gson.fromJson(upRoutingResponse, Map.class);
 
             // 无可用通道返回响应
@@ -159,6 +162,7 @@ public class CollpayServiceImpl implements CollpayService {
             /* ------------------------ 路由分发 ------------------------------ */
 
             // 无异常，保存下游请求信息到数据库
+            CollpayInfo collpayInfo = gson.fromJson(decodeJson, CollpayInfo.class);
             collpayInfoRespository.save(collpayInfo);
             logger.info("保存下游请求信息到数据库："+collpayInfo);
 
@@ -175,17 +179,20 @@ public class CollpayServiceImpl implements CollpayService {
             collpaySenderService.sendMessage("collpayinfo.notice", upCollpayInfoJson);
 
             // 封装响应数据
-            rsp.put("sp_id", collpayInfo.getDown_sp_id());
-            rsp.put("mch_id", collpayInfo.getDown_mch_id());
+            rsp.put("out_trade_no",collpayInfo.getOut_trade_no());
             rsp.put("status", "SUCCESS");
-            rsp.put("trade_state", "正在处理中");
+            rsp.put("trade_state", "PROCESSING");
+            rsp.put("err_code",collpayInfo.getErr_code());
+            rsp.put("err_msg",collpayInfo.getErr_msg());
+            rsp.put("nonce_str", RandomStringUtils.randomAlphanumeric(10));
+            rsp.put("sign",RSAUtils.sign(gson.toJson(rsp),rsaPrivateKey));
 
             //返回响应参数
             return gson.toJson(rsp);
         }
         //验签失败，直接返回
         rsp.put("status", "FAIL");
-        rsp.put("message", "签名错误");
+        rsp.put("message", "[sign]签名错误");
         logger.error("签名错误");
         return gson.toJson(rsp);
     }
@@ -278,22 +285,27 @@ public class CollpayServiceImpl implements CollpayService {
     /**
      * RSA 解密方法
      *
-     * @param collpayInfo
+     * @param map
      * @param rsaPrivateKey
      */
-    public void downDecoding(CollpayInfo collpayInfo, RSAPrivateKey rsaPrivateKey,Map rsp)  {
+    public Map<String,String> downDecoding(Map<String,String> map, RSAPrivateKey rsaPrivateKey,Map rsp)  {
+
         try {
-            collpayInfo.setCard_name(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_name(), rsaPrivateKey));
-            collpayInfo.setCard_no(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_no(), rsaPrivateKey));
-            collpayInfo.setId_no(RSAUtils.privateKeyDecrypt(collpayInfo.getId_no(), rsaPrivateKey));
-            collpayInfo.setBank_mobile(RSAUtils.privateKeyDecrypt(collpayInfo.getBank_mobile(), rsaPrivateKey));
-            collpayInfo.setCvv2(RSAUtils.privateKeyDecrypt(collpayInfo.getCvv2(), rsaPrivateKey));
-            collpayInfo.setCard_valid_date(RSAUtils.privateKeyDecrypt(collpayInfo.getCard_valid_date(), rsaPrivateKey));
+            map.put("card_name",RSAUtils.privateKeyDecrypt(map.get("card_name"), rsaPrivateKey));
+            map.put("card_no",RSAUtils.privateKeyDecrypt(map.get("card_no"), rsaPrivateKey));
+            map.put("id_no",RSAUtils.privateKeyDecrypt(map.get("id_no"), rsaPrivateKey));
+            map.put("bank_mobile",RSAUtils.privateKeyDecrypt(map.get("bank_mobile"), rsaPrivateKey));
+            map.put("cvv2",RSAUtils.privateKeyDecrypt(map.get("cvv2"), rsaPrivateKey));
+            map.put("card_valid_date",RSAUtils.privateKeyDecrypt(map.get("card_valid_date"), rsaPrivateKey));
+
         } catch (Exception e) {
             rsp.put("status", "FAIL");
             rsp.put("message", "密钥错误");
             logger.error("RSA解密exception:"+e);
+            return rsp;
         }
+        return map;
+
 
     }
 

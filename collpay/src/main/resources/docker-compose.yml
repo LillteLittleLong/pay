@@ -1,0 +1,49 @@
+eureka-server:
+  image: eureka-server
+  ports:
+    - 8500:8500
+  hostname: eureka
+routing:
+  image: routing
+  ports:
+    - 8501:8501
+  links:
+    - eureka-server
+reconciliation:
+  image: reconciliation
+  ports:
+    - 8502:8502
+  links:
+    - eureka-server
+gatewaypay:
+  image: gatewaypay
+  ports:
+    - 8104:8104
+  links:
+    - eureka-server
+    - routing
+    - reconciliation
+easypay:
+  image: easypay
+  ports:
+    - 8102:8102
+  links:
+    - eureka-server
+    - routing
+    - reconciliation
+distillpay:
+  image: distillpay
+  ports:
+    - 8103:8103
+  links:
+    - eureka-server
+    - routing
+    - reconciliation
+collpay:
+  image: collpay
+  ports:
+    - 8101:8101
+  links:
+    - eureka-server
+    - routing
+    - reconciliation
