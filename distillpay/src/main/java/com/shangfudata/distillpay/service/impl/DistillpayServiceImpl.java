@@ -359,13 +359,12 @@ public class DistillpayServiceImpl implements DistillpayService {
         sysReconciliationInfo.setTrade_time(byOutTradeNo.getTrade_time());
         sysReconciliationInfo.setTrade_state(byOutTradeNo.getTrade_state());
         sysReconciliationInfo.setTotal_fee(byOutTradeNo.getTotal_fee());
-        sysReconciliationInfo.setHand_fee(distributionInfo.getUp_charge());
+        sysReconciliationInfo.setHand_fee(distributionInfo.getProfit());
         sysReconciliationInfo.setTrade_type("DISTILL_PAY");
         sysReconciliationInfo.setSp_trade_no(byOutTradeNo.getOut_trade_no());
         sysReconciliationInfo.setTrade_no(byOutTradeNo.getCh_trade_no());
         sysReconciliationInfo.setDown_sp_id(byOutTradeNo.getDown_sp_id());
         sysReconciliationInfo.setDown_mch_id(byOutTradeNo.getDown_mch_id());
-        sysReconciliationInfo.setDown_charge(distributionInfo.getDown_charge());
 
         // 保存系统对账信息
         sysReconInfoRepository.save(sysReconciliationInfo);
