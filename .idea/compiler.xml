@@ -6,12 +6,12 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="gatewaypay" />
+        <module name="easypay" />
+        <module name="eureka-server" />
         <module name="collpay" />
         <module name="common" />
         <module name="distillpay" />
-        <module name="easypay" />
-        <module name="eureka-server" />
-        <module name="gatewaypay" />
         <module name="reconciliation" />
         <module name="routing" />
       </profile>

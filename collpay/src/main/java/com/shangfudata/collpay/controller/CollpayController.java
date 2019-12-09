@@ -26,6 +26,7 @@ public class CollpayController {
     public String Collpay(@RequestBody String CollpayInfoToJson) throws Exception{
         logger.info("接口接收下游交易请求信息："+CollpayInfoToJson);
         return collpayService.downCollpay(CollpayInfoToJson);
+        //加fb-dev
 
     }
 
